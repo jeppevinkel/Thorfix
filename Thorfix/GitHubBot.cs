@@ -45,7 +45,9 @@ public class GitHubBot
                 {
                     if (issue.Labels.Any(l => l.Name == "thordone")) continue;
                     
+                    Console.WriteLine($"Processing #{issue.Number}");
                     await HandleIssue(issue);
+                    Console.WriteLine($"Done with #{issue.Number}");
                 }
 
                 await Task.Delay(TimeSpan.FromMinutes(5)); // Check every 5 minutes
@@ -88,7 +90,6 @@ public class GitHubBot
             var issueUpdate = issue.ToUpdate();
             issueUpdate.State = ItemState.Closed;
             await _github.Issue.Update(_repoOwner, _repoName, issue.Number, issueUpdate);
-            Console.WriteLine($"Done with #{issue.Number}");
         }
         catch (Exception ex)
         {
