@@ -44,10 +44,10 @@ jobs:
       - name: Trigger Dev Container Recreation
         uses: distributhor/workflow-webhook@v3
         if: steps.extract_branch.outputs.branch == 'develop' && env.webhook_url != ''
-        env:
+        with:
           webhook_url: ${{ secrets.CONTAINER_DEV_WEBHOOK }}
       - name: Trigger Prod Container Recreation
         uses: distributhor/workflow-webhook@v3
         if: steps.extract_branch.outputs.branch == 'master' && env.webhook_url != ''
-        env:
+        with:
           webhook_url: ${{ secrets.CONTAINER_PROD_WEBHOOK }}
