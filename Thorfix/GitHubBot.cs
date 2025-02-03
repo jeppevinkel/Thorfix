@@ -222,7 +222,7 @@ public class GitHubBot
         sb.AppendLine("1. A list of files that need to be modified");
         sb.AppendLine("2. The new content for each file");
         sb.AppendLine("3. A description of the changes made");
-        sb.AppendLine("All changed files must be provided in the following format.");
+        sb.AppendLine("All changed files must be provided in the following format. The file should contain the entirety of the content, not just the changes.");
         sb.AppendLine("#FILE <filepath>#");
         sb.AppendLine("#CONTENT#");
         sb.AppendLine("<file content>");
