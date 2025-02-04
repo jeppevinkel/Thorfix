@@ -286,7 +286,7 @@ public class GitHubBot
             Messages = new List<Message> { message },
             MaxTokens = 4096,
             Stream = false,
-            Temperature = 0.3m
+            Temperature = 0.8m
         });
 
         var fileChanges = new Dictionary<string, string>();
