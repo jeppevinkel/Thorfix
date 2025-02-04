@@ -221,7 +221,7 @@ public class GitHubBot
             Messages = new List<Message> { message },
             MaxTokens = 4096,
             Stream = false,
-            Temperature = 0.3m
+            Temperature = 1.0m
         });
 
         var filesToLoad = new Dictionary<string, string>();
@@ -286,7 +286,7 @@ public class GitHubBot
             Messages = new List<Message> { message },
             MaxTokens = 4096,
             Stream = false,
-            Temperature = 0.8m
+            Temperature = 1.0m
         });
 
         var fileChanges = new Dictionary<string, string>();
