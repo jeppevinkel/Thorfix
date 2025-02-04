@@ -68,13 +68,27 @@ public class GitHubBot
             var repoFiles = await GetRepositoryContents();
             
             // Load the important files
-            repoFiles = await DecideImportantFiles(issue, repoFiles);
+            var filesToProcess = await DecideImportantFiles(issue, repoFiles);
+            
+            // Load the actual content for each file
+            var loadedFiles = new Dictionary<string, string>();
+            foreach (var file in filesToProcess)
+            {
+                var content = await GetFileContents(file.Key);
+                if (content != null)
+                {
+                    loadedFiles[file.Key] = content;
+                }
+            }
             
             // Generate context for Claude
-            var context = GenerateContext(issue, repoFiles);
+            var context = GenerateContext(issue, loadedFiles);
 
             // Get solution from Claude
             var solution = await GetSolutionFromClaude(context);
+
+            // Validate the solution contains complete file contents
+            ValidateFileChanges(solution.FileChanges, loadedFiles);
 
             // Create branch and apply changes
             await CreateBranchAndApplyChanges(issue, solution);
@@ -96,6 +110,30 @@ public class GitHubBot
             await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
                 $"I encountered an error while trying to fix this issue: {ex.Message}");
             throw;
+        }
+    }
+
+    private void ValidateFileChanges(Dictionary<string, string> changes, Dictionary<string, string> originalFiles)
+    {
+        foreach (var change in changes)
+        {
+            if (originalFiles.ContainsKey(change.Key))
+            {
+                // Check if the changed content contains any indicators of incomplete content
+                if (change.Value.Contains("// Content should remain unchanged") ||
+                    change.Value.Contains("/* Content should remain unchanged */") ||
+                    change.Value.Contains("<unchanged>") ||
+                    change.Value.Contains("[unchanged]"))
+                {
+                    throw new InvalidOperationException($"Invalid file change detected for {change.Key}: Contains placeholder content");
+                }
+
+                // Ensure the changed content isn't significantly shorter than the original
+                if (change.Value.Length < originalFiles[change.Key].Length * 0.5)
+                {
+                    throw new InvalidOperationException($"Invalid file change detected for {change.Key}: New content is suspiciously short");
+                }
+            }
         }
     }
 
@@ -186,8 +224,6 @@ public class GitHubBot
             Temperature = 0.3m
         });
 
-        // Parse Claude's response to extract file changes and description
-        // This is a simplified example - you'd need to implement proper parsing based on Claude's response format
         var filesToLoad = new Dictionary<string, string>();
         var description = response.Message.ToString() ?? "<NO CONTENT>";
 
@@ -223,6 +259,7 @@ public class GitHubBot
         sb.AppendLine("2. The new content for each file");
         sb.AppendLine("3. A description of the changes made");
         sb.AppendLine("All changed files must be provided in the following format. The file should contain the entirety of the content, not just the changes.");
+        sb.AppendLine("Do not use placeholders or comments indicating unchanged content - provide the complete file content.");
         sb.AppendLine("#FILE <filepath>#");
         sb.AppendLine("#CONTENT#");
         sb.AppendLine("<file content>");
@@ -252,8 +289,6 @@ public class GitHubBot
             Temperature = 0.3m
         });
 
-        // Parse Claude's response to extract file changes and description
-        // This is a simplified example - you'd need to implement proper parsing based on Claude's response format
         var fileChanges = new Dictionary<string, string>();
         var description = response.Message.ToString() ?? "<NO CONTENT>";
 
