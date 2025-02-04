@@ -125,6 +125,8 @@ public class Thorfix
                 messages.Add(new Message(toolCall, response));
             }
         } while (res.ToolCalls?.Count > 0);
+        
+        Directory.Delete($"/app/repository/{_repoName}");
     }
     
     private static string GenerateContext(Issue issue)
