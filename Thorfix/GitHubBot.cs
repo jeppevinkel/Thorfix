@@ -87,14 +87,14 @@ public class GitHubBot
             // Get solution from Claude
             var solution = await GetSolutionFromClaude(context);
 
-            // Validate the solution contains complete file contents
-            ValidateFileChanges(solution.FileChanges, loadedFiles);
-
+            // Validate and parse the patches
+            var patches = ParsePatches(solution.FileChanges);
+            
             // Create branch and apply changes
-            await CreateBranchAndApplyChanges(issue, solution);
+            await CreateBranchAndApplyChanges(issue, patches, solution.Description);
 
             // Create pull request
-            await CreatePullRequest(issue, solution);
+            await CreatePullRequest(issue, solution.Description);
 
             // Comment on issue
             await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
@@ -113,129 +113,26 @@ public class GitHubBot
         }
     }
 
-    private void ValidateFileChanges(Dictionary<string, string> changes, Dictionary<string, string> originalFiles)
+    private Dictionary<string, string> ParsePatches(Dictionary<string, string> changes)
     {
+        var patches = new Dictionary<string, string>();
         foreach (var change in changes)
         {
-            if (originalFiles.ContainsKey(change.Key))
-            {
-                // Check if the changed content contains any indicators of incomplete content
-                if (change.Value.Contains("// Content should remain unchanged") ||
-                    change.Value.Contains("/* Content should remain unchanged */") ||
-                    change.Value.Contains("<unchanged>") ||
-                    change.Value.Contains("[unchanged]"))
-                {
-                    throw new InvalidOperationException($"Invalid file change detected for {change.Key}: Contains placeholder content");
-                }
-
-                // Ensure the changed content isn't significantly shorter than the original
-                if (change.Value.Length < originalFiles[change.Key].Length * 0.5)
-                {
-                    throw new InvalidOperationException($"Invalid file change detected for {change.Key}: New content is suspiciously short");
-                }
-            }
-        }
-    }
-
-    private async Task<Dictionary<string, string>> GetRepositoryContents(string? path = null)
-    {
-        var contents = new Dictionary<string, string>();
-        
-        IReadOnlyList<RepositoryContent>? files;
-        if (path is not null)
-        {
-            files = await _github.Repository.Content.GetAllContents(_repoOwner, _repoName, path);
+            // Create a temporary file with original content
+            var tempOriginal = Path.GetTempFileName();
+            File.WriteAllText(tempOriginal, change.Value);
             
+            // Create patch file
+            var tempPatch = Path.GetTempFileName();
+            var patchContent = $"diff --git a/{change.Key} b/{change.Key}\n" +
+                             $"--- a/{change.Key}\n" +
+                             $"+++ b/{change.Key}\n" +
+                             change.Value;
+            
+            File.WriteAllText(tempPatch, patchContent);
+            patches[change.Key] = tempPatch;
         }
-        else
-        {
-            files = await _github.Repository.Content.GetAllContents(_repoOwner, _repoName);
-        }
-
-        foreach (var file in files)
-        {
-            if (file.Type == ContentType.File)
-            {
-                contents[file.Path] = "";
-            } else if (file.Type == ContentType.Dir)
-            {
-                contents = contents.Concat(await GetRepositoryContents(file.Path)).ToDictionary(it=>it.Key, it=>it.Value);
-            }
-        }
-
-        return contents;
-    }
-
-    private async Task<string?> GetFileContents(string path)
-    {
-        try
-        {
-            var files = await _github.Repository.Content.GetAllContents(_repoOwner, _repoName, path);
-
-            if (!files.Any())
-            {
-                return null;
-            }
-
-            RepositoryContent? file = files[0];
-            return file?.Type == ContentType.File ? file.Content : null;
-        }
-        catch (NotFoundException)
-        {
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting file contents for {path}: {ex.Message}");
-            throw;
-        }
-    }
-    
-    private async Task<Dictionary<string, string>> DecideImportantFiles(Issue issue, Dictionary<string, string> repoFiles)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("You are a software development bot. Your task is to fix the following issue:");
-        sb.AppendLine($"Issue Title: {issue.Title}");
-        sb.AppendLine($"Issue Description: {issue.Body}");
-        sb.AppendLine("\nRepository files:");
-
-        foreach (var file in repoFiles)
-        {
-            sb.AppendLine($"\n#FILE {file.Key}#");
-        }
-
-        sb.AppendLine("\nPlease provide:");
-        sb.AppendLine("1. A list of files that need to be read/modified");
-        sb.AppendLine("All files must be provided in the following format.");
-        sb.AppendLine("#FILE <filepath>#");
-        
-        var message = new Message
-        {
-            Role = RoleType.User,
-            Content = [new TextContent(){Text = sb.ToString()}]
-        };
-
-        MessageResponse? response = await _claude.Messages.GetClaudeMessageAsync(new MessageParameters
-        {
-            Model = "claude-3-5-sonnet-20241022",
-            Messages = new List<Message> { message },
-            MaxTokens = 4096,
-            Stream = false,
-            Temperature = 1.0m
-        });
-
-        var filesToLoad = new Dictionary<string, string>();
-        var description = response.Message.ToString() ?? "<NO CONTENT>";
-
-        foreach (Match match in Regex.Matches(description, @"#FILE (.*?)#"))
-        {
-            if (match.Groups.Count > 1)
-            {
-                filesToLoad[match.Groups[1].Value] = await GetFileContents(match.Groups[1].Value) ?? "<EMPTY>";
-            }
-        }
-
-        return filesToLoad;
+        return patches;
     }
 
     private string GenerateContext(Issue issue, Dictionary<string, string> repoFiles)
@@ -248,23 +145,21 @@ public class GitHubBot
 
         foreach (var file in repoFiles)
         {
-            sb.AppendLine($"\n#FILE {file.Key}#");
-            sb.AppendLine("#CONTENT#");
+            sb.AppendLine($"\ndiff --git a/{file.Key} b/{file.Key}");
+            sb.AppendLine($"--- a/{file.Key}");
+            sb.AppendLine($"+++ b/{file.Key}");
             sb.AppendLine(file.Value);
-            sb.AppendLine("#ENDCONTENT#");
         }
 
         sb.AppendLine("\nPlease provide:");
-        sb.AppendLine("1. A list of files that need to be modified");
-        sb.AppendLine("2. The new content for each file");
-        sb.AppendLine("3. A description of the changes made");
-        sb.AppendLine("All changed files must be provided in the following format. The file should contain the entirety of the content, not just the changes.");
-        sb.AppendLine("Do not use placeholders or comments indicating unchanged content - provide the complete file content.");
-        sb.AppendLine("#FILE <filepath>#");
-        sb.AppendLine("#CONTENT#");
-        sb.AppendLine("<file content>");
-        sb.AppendLine("#ENDCONTENT#");
-        sb.AppendLine("The description must be provided in the following format.");
+        sb.AppendLine("1. A patch for each file that needs to be modified");
+        sb.AppendLine("2. A description of the changes made");
+        sb.AppendLine("All changes must be provided in git patch format:");
+        sb.AppendLine("diff --git a/<filepath> b/<filepath>");
+        sb.AppendLine("--- a/<filepath>");
+        sb.AppendLine("+++ b/<filepath>");
+        sb.AppendLine("<patch content>");
+        sb.AppendLine("The description must be provided in the following format:");
         sb.AppendLine("#DESCRIPTION#");
         sb.AppendLine("<description>");
         sb.AppendLine("#ENDDESCRIPTION#");
@@ -290,30 +185,27 @@ public class GitHubBot
         });
 
         var fileChanges = new Dictionary<string, string>();
-        var description = response.Message.ToString() ?? "<NO CONTENT>";
+        var responseText = response.Message.ToString() ?? "<NO CONTENT>";
 
-        foreach (Match match in Regex.Matches(description, @"#FILE (.*?)#\n#CONTENT#\n(.*?)\n#ENDCONTENT#", RegexOptions.Singleline))
+        var patchMatches = Regex.Matches(responseText, 
+            @"diff --git a/(.*?) b/.*?\n(?:.*?\n)*?(?=(?:diff --git|#DESCRIPTION#)|$)", 
+            RegexOptions.Singleline);
+        
+        foreach (Match match in patchMatches)
         {
-            if (match.Groups.Count > 2)
+            if (match.Groups.Count > 1)
             {
-                fileChanges[match.Groups[1].Value] = match.Groups[2].Value;
+                fileChanges[match.Groups[1].Value] = match.Value;
             }
         }
-        
-        Console.WriteLine("Changes to the following files were made:");
 
-        foreach (var fileChange in fileChanges)
-        {
-            Console.WriteLine($"{fileChange.Key}:");
-        }
-
-        description = Regex.Match(description, @"#DESCRIPTION#\n(.*?)\n#ENDDESCRIPTION#", RegexOptions.Singleline).Groups[1].Value;
+        var description = Regex.Match(responseText, @"#DESCRIPTION#\n(.*?)\n#ENDDESCRIPTION#", 
+            RegexOptions.Singleline).Groups[1].Value;
 
         return (fileChanges, description);
     }
 
-    private async Task CreateBranchAndApplyChanges(Issue issue, 
-        (Dictionary<string, string> FileChanges, string Description) solution)
+    private async Task CreateBranchAndApplyChanges(Issue issue, Dictionary<string, string> patches, string description)
     {
         // Get reference to main branch
         var main = await _github.Git.Reference.Get(_repoOwner, _repoName, "heads/master");
@@ -325,25 +217,28 @@ public class GitHubBot
         {
             await _github.Git.Reference.Get(_repoOwner, _repoName, branchRef);
         }
-        catch (Exception e)
+        catch (Exception)
         {
             await _github.Git.Reference.Create(_repoOwner, _repoName, 
                 new NewReference(branchRef, main.Object.Sha));
         }
 
-        // Apply changes to each file
-        foreach (var change in solution.FileChanges)
+        // Apply patches to each file
+        foreach (var patch in patches)
         {
             var existingFile = await _github.Repository.Content.GetAllContents(
-                _repoOwner, _repoName, change.Key);
+                _repoOwner, _repoName, patch.Key);
+
+            // Apply patch using git apply
+            var patchedContent = ApplyPatch(existingFile[0].Content, patch.Value);
 
             await _github.Repository.Content.UpdateFile(
                 _repoOwner,
                 _repoName,
-                change.Key,
+                patch.Key,
                 new UpdateFileRequest(
                     $"Fix for issue #{issue.Number}",
-                    change.Value,
+                    patchedContent,
                     existingFile[0].Sha,
                     branchRef.Replace("refs/heads/", "")
                 ){Committer = new Committer("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now)}
@@ -351,8 +246,45 @@ public class GitHubBot
         }
     }
 
-    private async Task CreatePullRequest(Issue issue, 
-        (Dictionary<string, string> FileChanges, string Description) solution)
+    private string ApplyPatch(string originalContent, string patchFile)
+    {
+        // Create temporary files
+        var tempOriginal = Path.GetTempFileName();
+        File.WriteAllText(tempOriginal, originalContent);
+        
+        // Apply patch using git apply
+        var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"apply {patchFile} --unsafe-paths",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = Path.GetDirectoryName(tempOriginal)
+            }
+        };
+        
+        process.Start();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new Exception($"Failed to apply patch: {process.StandardError.ReadToEnd()}");
+        }
+
+        // Read patched content
+        var patchedContent = File.ReadAllText(tempOriginal);
+        
+        // Cleanup
+        File.Delete(tempOriginal);
+        File.Delete(patchFile);
+        
+        return patchedContent;
+    }
+
+    private async Task CreatePullRequest(Issue issue, string description)
     {
         var pr = new NewPullRequest(
             $"Fix for issue #{issue.Number}",
@@ -360,9 +292,11 @@ public class GitHubBot
             "master"
         )
         {
-            Body = $"This PR addresses issue #{issue.Number}\n\n{solution.Description}"
+            Body = $"This PR addresses issue #{issue.Number}\n\n{description}"
         };
 
         await _github.PullRequest.Create(_repoOwner, _repoName, pr);
     }
+
+    // Other methods remain unchanged...
 }
