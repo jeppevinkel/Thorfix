@@ -114,6 +114,8 @@ public class Thorfix
         do
         {
             res = await _claude.Messages.GetClaudeMessageAsync(parameters);
+            
+            messages.Add(res.Message);
 
             foreach (Function? toolCall in res.ToolCalls)
             {
