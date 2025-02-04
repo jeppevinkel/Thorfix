@@ -18,6 +18,6 @@ public class GithubTools
     public async Task IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
     {
         await _client.Issue.Comment.Create(_issue.Repository.Id, _issue.Number,
-            comment);
+            $"[FROM THOR]\n\n{comment}");
     }
 }
