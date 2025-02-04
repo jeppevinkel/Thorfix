@@ -7,11 +7,15 @@ public class GithubTools
 {
     private readonly GitHubClient _client;
     private readonly Issue _issue;
+    private readonly string _repoOwner;
+    private readonly string _repoName;
     
-    public GithubTools(GitHubClient client, Issue issue)
+    public GithubTools(GitHubClient client, Issue issue, string repoOwner, string repoName)
     {
         _client = client;
         _issue = issue;
+        _repoOwner = repoOwner;
+        _repoName = repoName;
     }
     
     [Function("Adds a comment to an issue")]
@@ -26,11 +30,9 @@ public class GithubTools
             throw new NullReferenceException("Github client is null for some reason");
         }
 
-        var repositoryId = _issue.Repository.Id;
-
         try
         {
-            await _client.Issue.Comment.Create(repositoryId, _issue.Number,
+            await _client.Issue.Comment.Create(_repoOwner, _repoName, _issue.Number,
                 $"[FROM THOR]\n\n{comment}");
             return "Comment added successfully";
         }

@@ -18,7 +18,6 @@ public class Thorfix
     private readonly AnthropicClient _claude;
     private readonly string _repoOwner;
     private readonly string _repoName;
-    private readonly IReadOnlyList<Tool> _tools;
 
     public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName)
     {
@@ -30,8 +29,6 @@ public class Thorfix
         _claude = new AnthropicClient(claudeApiKey);
         _repoOwner = repoOwner;
         _repoName = repoName;
-
-        _tools = Tool.GetAllAvailableTools(true, true, true);
     }
 
     public async Task MonitorAndHandleIssues(CancellationToken cancellationToken = default)
@@ -94,7 +91,7 @@ public class Thorfix
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
-        GithubTools githubTools = new GithubTools(_github, issue);
+        GithubTools githubTools = new GithubTools(_github, issue, _repoOwner, _repoName);
 
         var tools = new List<Tool>
         {
