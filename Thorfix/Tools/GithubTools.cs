@@ -15,7 +15,7 @@ public class GithubTools
     }
     
     [Function("Adds a comment to an issue")]
-    public async Task IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
+    public async Task<string> IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
     {
         if (_issue is null)
         {
@@ -27,8 +27,16 @@ public class GithubTools
         }
 
         var repositoryId = _issue.Repository.Id;
-        
-        await _client.Issue.Comment.Create(repositoryId, _issue.Number,
-            $"[FROM THOR]\n\n{comment}");
+
+        try
+        {
+            await _client.Issue.Comment.Create(repositoryId, _issue.Number,
+                $"[FROM THOR]\n\n{comment}");
+            return "Comment added successfully";
+        }
+        catch (Exception ex)
+        {
+            return ex.ToString();
+        }
     }
 }

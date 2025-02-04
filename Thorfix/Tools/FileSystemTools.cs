@@ -15,6 +15,7 @@ public class FileSystemTools
     [Function("Reads a file from the filesystem")]
     public async Task<string> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
+        Console.WriteLine($"Read the contents of {filePath}");
         var directoryInfo = new DirectoryInfo(filePath);
 
         if (!directoryInfo.FullName.StartsWith(RootDirectory.FullName))
@@ -29,6 +30,7 @@ public class FileSystemTools
     public Task<string> ListFiles()
     {
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories).Select(it => it.Replace(RootDirectory.FullName, ""));
+        Console.WriteLine(string.Join("\n", files));
         return Task.FromResult(string.Join("\n", files));
     }
 }
