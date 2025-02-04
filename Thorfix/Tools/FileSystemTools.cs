@@ -5,7 +5,7 @@ namespace Thorfix.Tools;
 public class FileSystemTools
 {
     
-    private static readonly DirectoryInfo RootDirectory = new DirectoryInfo("/repository");
+    private static readonly DirectoryInfo RootDirectory = new DirectoryInfo("/app/repository");
 
     public FileSystemTools()
     {

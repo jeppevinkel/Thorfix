@@ -86,7 +86,7 @@ public class Thorfix
 
     private async Task HandleIssue(Issue issue)
     {
-        Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git", "/repository");
+        Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git", "/app/repository");
 
         var messages = new List<Message>()
         {
