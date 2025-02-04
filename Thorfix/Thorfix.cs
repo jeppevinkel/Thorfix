@@ -50,7 +50,6 @@ public class Thorfix
 
                     if (lastComment?.Body.Contains("[FROM THOR]") ?? false)
                     {
-                        Console.WriteLine(lastComment?.Body);
                         continue;
                     }
                     
