@@ -17,7 +17,18 @@ public class GithubTools
     [Function("Adds a comment to an issue")]
     public async Task IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
     {
-        await _client.Issue.Comment.Create(_issue.Repository.Id, _issue.Number,
+        if (_issue is null)
+        {
+            throw new NullReferenceException("Issue is null for some reason");
+        }
+        if (_client is null)
+        {
+            throw new NullReferenceException("Github client is null for some reason");
+        }
+
+        var repositoryId = _issue.Repository.Id;
+        
+        await _client.Issue.Comment.Create(repositoryId, _issue.Number,
             $"[FROM THOR]\n\n{comment}");
     }
 }
