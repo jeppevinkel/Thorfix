@@ -180,6 +180,7 @@ public class Thorfix
     {
         try
         {
+            Remote remote = repository.Network.Remotes["origin"];
             var options = new PushOptions();
             options.CredentialsProvider = (_, _, _) => _usernamePasswordCredentials;
             if (branch is not null)
@@ -188,7 +189,7 @@ public class Thorfix
             }
             else
             {
-                repository.Network.Push(repository.Head, options);
+                repository.Network.Push(remote, repository.Head.FriendlyName, options);
             }
         }
         catch (Exception e)
