@@ -50,7 +50,17 @@ public class FileSystemTools
     }
 
     [Function("Apply a patch to a file in the repository")]
-    public async Task<string> PatchFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The patch to apply in the format defined earlier", true)] string patch)
+    public async Task<string> PatchFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter(@"The format of the patches is as following:
+@@ -1,6 +1,7 @@
+ Line 3
+-Line 4
++Modified Line 4
+ Line 5
+ Line 6
++New Line
+ Line 7
+ Line 8
+Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file.", true)] string patch)
     {
         filePath = Path.Combine(RootDirectory.FullName, filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
