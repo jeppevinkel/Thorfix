@@ -94,15 +94,17 @@ public class Thorfix
     {
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
             $"/app/repository/{_repoName}"));
-        Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
+        Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.FriendlyName.Contains($"origin/thorfix/{issue.Number}"));
+        // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
             thorfixBranch = Commands.Checkout(repository, thorfixBranch);
         }
         else
         {
-            CreateRemoteBranch(repository, $"thorfix/{issue.Number}", "master");
-            thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
+            var newBranchName = await GenerateBranchName(issue);
+            CreateRemoteBranch(repository, $"thorfix/{issue.Number}-{newBranchName}", "master");
+            thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}-{newBranchName}"];
             Commands.Checkout(repository, thorfixBranch);
         }
 
@@ -247,5 +249,38 @@ The format of the patches is as following:
 Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file.");
 
         return sb.ToString();
+    }
+
+    private async Task<string> GenerateBranchName(Issue issue)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("You are a software development bot. Your task is to fix the following issue:");
+        sb.AppendLine($"Issue Title: {issue.Title}");
+        sb.AppendLine($"Issue Description: {issue.Body}");
+        sb.AppendLine("Come up with a short concise and descriptive name for a branch to work on this issue.");
+        sb.AppendLine("You must respond with the branch name and nothing else. The name should now contain spaces.");
+        sb.AppendLine("The name should not contain spaces.");
+        sb.AppendLine("The only allowed special characters are dashes and underscores.");
+        sb.AppendLine("Don't respond with anything other than the branch name.");
+        
+        var messages = new List<Message>()
+        {
+            new(RoleType.User, sb.ToString())
+        };
+        
+        var parameters = new MessageParameters()
+        {
+            Messages = messages,
+            MaxTokens = 4048,
+            Model = AnthropicModels.Claude35Sonnet,
+            Stream = false,
+            Temperature = 1.0m,
+        };
+
+        MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
+
+        var branchName = res.Message.ToString();
+
+        return branchName.Replace(' ', '-');
     }
 }
