@@ -118,7 +118,17 @@ public class Thorfix
         {
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
-            Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.PathFile)),
+            Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.PatchFile), @"The format of the patches is as following:
+@@ -1,6 +1,7 @@
+ Line 3
+-Line 4
++Modified Line 4
+ Line 5
+ Line 6
++New Line
+ Line 7
+ Line 8
+Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file."),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
         };
 
