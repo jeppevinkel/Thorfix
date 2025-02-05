@@ -15,12 +15,7 @@ public class FileSystemTools
     [Function("Reads a file from the filesystem")]
     public async Task<string> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
-        if (filePath.StartsWith('\\') || filePath.StartsWith('/'))
-        {
-            filePath = filePath[1..];
-        }
-        Console.WriteLine($"{Path.Combine(RootDirectory.FullName, filePath)} [{RootDirectory.FullName}, {filePath}]");
-        filePath = Path.Combine(RootDirectory.FullName, filePath);
+        filePath = GetFullPath(filePath);
         Console.WriteLine($"Read the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
@@ -62,7 +57,7 @@ public class FileSystemTools
  Line 8
 Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file.", true)] string patch)
     {
-        filePath = Path.Combine(RootDirectory.FullName, filePath);
+        filePath = GetFullPath(filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
@@ -95,5 +90,14 @@ Where the numbers after @@ - represent the line numbers in the original file and
         var directoryInfo = new DirectoryInfo(filePath);
 
         return directoryInfo.FullName.StartsWith(RootDirectory.FullName);
+    }
+
+    private static string GetFullPath(string filePath)
+    {
+        if (filePath.StartsWith('\\') || filePath.StartsWith('/'))
+        {
+            filePath = filePath[1..];
+        }
+        return Path.Combine(RootDirectory.FullName, filePath);
     }
 }
