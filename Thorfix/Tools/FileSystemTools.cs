@@ -46,7 +46,7 @@ public class FileSystemTools
     }
 
     [Function("Apply a patch to a file in the repository")]
-    public async Task<string> PathFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The patch to apply in the format defined earlier", true)] string patch)
+    public async Task<string> PatchFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The patch to apply in the format defined earlier", true)] string patch)
     {
         filePath = Path.Combine(RootDirectory.FullName, filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
