@@ -117,7 +117,7 @@ public class Thorfix
         {
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
-            Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ModifyFile)),
+            Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.PathFile)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
         };
 
@@ -206,7 +206,7 @@ public class Thorfix
 
         sb.AppendLine(
             "\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
-        sb.AppendLine(@"File modifications are done through patches.
+        sb.AppendLine(@"The tool to modify files uses patches to define the modifications.
 The format of the patches is as following:
 @@ -1,6 +1,7 @@
  Line 3
