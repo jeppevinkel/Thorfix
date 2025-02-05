@@ -6,8 +6,10 @@ using Anthropic.SDK.Messaging;
 using LibGit2Sharp;
 using Octokit;
 using Thorfix.Tools;
+using Branch = LibGit2Sharp.Branch;
 using Credentials = Octokit.Credentials;
 using Repository = LibGit2Sharp.Repository;
+using Signature = LibGit2Sharp.Signature;
 using Tool = Anthropic.SDK.Common.Tool;
 
 namespace Thorfix;
@@ -18,6 +20,7 @@ public class Thorfix
     private readonly AnthropicClient _claude;
     private readonly string _repoOwner;
     private readonly string _repoName;
+    private readonly UsernamePasswordCredentials _usernamePasswordCredentials;
 
     public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName)
     {
@@ -25,10 +28,16 @@ public class Thorfix
         {
             Credentials = new Credentials(githubToken)
         };
-        
+
         _claude = new AnthropicClient(claudeApiKey);
         _repoOwner = repoOwner;
         _repoName = repoName;
+
+        _usernamePasswordCredentials = new UsernamePasswordCredentials()
+        {
+            Username = "thorfix",
+            Password = githubToken,
+        };
     }
 
     public async Task MonitorAndHandleIssues(CancellationToken cancellationToken = default)
@@ -40,7 +49,7 @@ public class Thorfix
                 var issues = await _github.Issue.GetAllForRepository(_repoOwner, _repoName, new RepositoryIssueRequest
                 {
                     State = ItemStateFilter.Open,
-                    Labels = { "thorfix" },
+                    Labels = {"thorfix"},
                 });
 
                 foreach (Issue? issue in issues)
@@ -52,9 +61,9 @@ public class Thorfix
                     {
                         continue;
                     }
-                    
+
                     if (issue.Labels.Any(l => l.Name == "thordone")) continue;
-                    
+
                     Console.WriteLine($"Processing #{issue.Number}");
                     try
                     {
@@ -68,7 +77,6 @@ public class Thorfix
                     {
                         Console.WriteLine($"Done with #{issue.Number}");
                     }
-                    
                 }
 
                 await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken); // Check every 5 minutes
@@ -83,7 +91,18 @@ public class Thorfix
 
     private async Task HandleIssue(Issue issue)
     {
-        Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git", $"/app/repository/{_repoName}");
+        using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
+            $"/app/repository/{_repoName}"));
+        Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
+        if (thorfixBranch is not null)
+        {
+            thorfixBranch = Commands.Checkout(repository, thorfixBranch);
+        }
+        else
+        {
+            thorfixBranch = repository.CreateBranch($"thorfix/{issue.Number}");
+            thorfixBranch = Commands.Checkout(repository, thorfixBranch);
+        }
 
         var messages = new List<Message>()
         {
@@ -99,7 +118,7 @@ public class Thorfix
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
         };
-        
+
         var parameters = new MessageParameters()
         {
             Messages = messages,
@@ -114,7 +133,7 @@ public class Thorfix
         do
         {
             res = await _claude.Messages.GetClaudeMessageAsync(parameters);
-            
+
             messages.Add(res.Message);
 
             foreach (Function? toolCall in res.ToolCalls)
@@ -124,10 +143,60 @@ public class Thorfix
                 messages.Add(new Message(toolCall, response));
             }
         } while (res.ToolCalls?.Count > 0);
-        
+
+        StageChanges(repository);
+        CommitChanges(repository, $"Thorfix: {issue.Number}");
+        PushChanges(repository);
+
         Directory.Delete($"/app/repository/{_repoName}");
     }
-    
+
+    public void StageChanges(Repository repository)
+    {
+        try
+        {
+            Commands.Stage(repository, "*");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception:RepoActions:StageChanges " + ex.Message);
+        }
+    }
+
+    public void CommitChanges(Repository repository, string commitMessage)
+    {
+        try
+        {
+            repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
+                new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Exception:RepoActions:CommitChanges " + e.Message);
+        }
+    }
+
+    public void PushChanges(Repository repository, Branch? branch = null)
+    {
+        try
+        {
+            var options = new PushOptions();
+            options.CredentialsProvider = (_, _, _) => _usernamePasswordCredentials;
+            if (branch is not null)
+            {
+                repository.Network.Push(branch, options);
+            }
+            else
+            {
+                repository.Network.Push(repository.Head, options);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
+        }
+    }
+
     private static string GenerateContext(Issue issue)
     {
         var sb = new StringBuilder();
@@ -135,7 +204,8 @@ public class Thorfix
         sb.AppendLine($"Issue Title: {issue.Title}");
         sb.AppendLine($"Issue Description: {issue.Body}");
 
-        sb.AppendLine("\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
+        sb.AppendLine(
+            "\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
 
         return sb.ToString();
     }
