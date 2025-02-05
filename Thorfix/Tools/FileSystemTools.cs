@@ -55,7 +55,7 @@ public class FileSystemTools
 +New Line
  Line 7
  Line 8
-Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file.", true)] string patch)
+Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file. The context of the file must match exactly with the context in the patch.", true)] string patch)
     {
         filePath = GetFullPath(filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
