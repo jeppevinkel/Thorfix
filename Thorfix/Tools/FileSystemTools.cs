@@ -21,7 +21,20 @@ public class FileSystemTools
         {
             return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
         }
-        return await File.ReadAllTextAsync(filePath);
+
+        try
+        {
+            return await File.ReadAllTextAsync(filePath);
+        }
+        catch (Exception e)
+        {
+            var message = e.Message;
+            if (message.Contains(RootDirectory.FullName))
+            {
+                message = message.Replace(RootDirectory.FullName, "");
+            }
+            return $"Failed to read file: {message}";
+        }
     }
 
     [Function("List all files in the repository")]
@@ -58,7 +71,7 @@ public class FileSystemTools
         }
         catch (Exception e)
         {
-            return $"Error while modifying {filePath}: {e}";
+            return $"Error while modifying {filePath}: {e.Message}";
         }
         
     }
