@@ -75,6 +75,7 @@ public class Thorfix
                     }
                     finally
                     {
+                        Directory.Delete($"/app/repository/{_repoName}");
                         Console.WriteLine($"Done with #{issue.Number}");
                     }
                 }
@@ -148,9 +149,6 @@ public class Thorfix
         StageChanges(repository);
         CommitChanges(repository, $"Thorfix: {issue.Number}");
         PushChanges(repository);
-
-
-        Directory.Delete($"/app/repository/{_repoName}");
     }
 
     public void StageChanges(Repository repository)
