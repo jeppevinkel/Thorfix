@@ -68,6 +68,8 @@ Where the numbers after @@ - represent the line numbers in the original file and
         {
             Console.WriteLine("<START>");
             Console.WriteLine(await File.ReadAllTextAsync(filePath));
+            Console.WriteLine("<PATCH>");
+            Console.WriteLine(patch);
             await Patcher.ApplyPatchAsync(
                 filePath,
                 patch
