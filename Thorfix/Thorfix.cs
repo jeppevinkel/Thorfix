@@ -55,7 +55,7 @@ public class Thorfix
                 foreach (Issue? issue in issues)
                 {
                     var comments = await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number);
-                    IssueComment? lastComment = comments?[^1];
+                    IssueComment? lastComment = comments?.LastOrDefault();
 
                     if (lastComment?.Body.Contains("[FROM THOR]") ?? false)
                     {
