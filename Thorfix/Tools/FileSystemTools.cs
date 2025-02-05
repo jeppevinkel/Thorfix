@@ -80,6 +80,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         }
         catch (Exception e)
         {
+            Console.WriteLine($"Error while modifying {filePath}: {e.Message}");
             return $"Error while modifying {filePath}: {e.Message}";
         }
         
