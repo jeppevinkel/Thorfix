@@ -159,10 +159,30 @@ public class Thorfix
         try
         {
             Commands.Stage(repository, "*");
+            PrintStatus(repository);
         }
         catch (Exception ex)
         {
             Console.WriteLine("Exception:RepoActions:StageChanges " + ex.Message);
+        }
+    }
+    
+    public void PrintStatus(Repository repository)
+    {
+        try
+        {
+            var status = repository.RetrieveStatus();
+            Console.WriteLine("Status: " + status);
+            
+            var changes = repository.Diff.Compare<TreeChanges>();
+            foreach (var change in changes)
+            {
+                Console.WriteLine($"{change.Status} {change.Path}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception:RepoActions:PrintStatus " + ex.Message);
         }
     }
 
