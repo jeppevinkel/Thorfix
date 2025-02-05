@@ -101,7 +101,8 @@ public class Thorfix
         }
         else
         {
-            thorfixBranch = repository.CreateBranch($"thorfix/{issue.Number}");
+            CreateRemoteBranch(repository, $"thorfix/{issue.Number}", "master");
+            thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
             thorfixBranch = Commands.Checkout(repository, thorfixBranch);
         }
 
@@ -181,20 +182,46 @@ public class Thorfix
         try
         {
             Remote remote = repository.Network.Remotes["origin"];
-            var options = new PushOptions();
-            options.CredentialsProvider = (_, _, _) => _usernamePasswordCredentials;
+            var pushOptions = new PushOptions
+            {
+                CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
+            };
             if (branch is not null)
             {
-                repository.Network.Push(branch, options);
+                repository.Network.Push(branch, pushOptions);
             }
             else
             {
-                repository.Network.Push(remote, repository.Head.FriendlyName, options);
+                repository.Network.Push(remote, repository.Head.FriendlyName, pushOptions);
             }
         }
         catch (Exception e)
         {
             Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
+        }
+    }
+    
+    private void CreateRemoteBranch(Repository repository, string branchName, string sourceBranchName)
+    {
+        Branch? sourceBranch = repository.Branches[$"origin/{sourceBranchName}"];
+        Branch? remoteBranch = repository.Branches[$"origin/{branchName}"];
+        
+        var pushOptions = new PushOptions
+        {
+            CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
+        };
+        
+        if (remoteBranch == null)
+        {
+            Branch? localBranch = repository.CreateBranch(branchName, sourceBranch.Tip);
+            
+            Remote? remote = repository.Network.Remotes.First();
+            repository.Branches.Update(localBranch, b => b.Remote = remote.Name, b => b.UpstreamBranch = localBranch.CanonicalName);
+            repository.Network.Push(localBranch, pushOptions);
+        }
+        else
+        {
+            Console.WriteLine($"Can't create branch '{branchName}' because it already exists.");
         }
     }
 
