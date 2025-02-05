@@ -146,6 +146,7 @@ public class Patcher
         var hunks = ParsePatch(patchLines);
         
         var result = ApplyHunks(sourceLines, hunks);
+        File.Delete(sourceFilePath);
         await File.WriteAllLinesAsync(sourceFilePath, result);
     }
 
