@@ -15,6 +15,7 @@ public class FileSystemTools
     [Function("Reads a file from the filesystem")]
     public async Task<string> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
+        filePath = Path.Combine(RootDirectory.FullName, filePath);
         Console.WriteLine($"Read the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
@@ -34,6 +35,7 @@ public class FileSystemTools
     [Function("Apply a patch to a file in the repository")]
     public async Task<string> ModifyFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The patch to apply", true)] string patch)
     {
+        filePath = Path.Combine(RootDirectory.FullName, filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
@@ -42,10 +44,15 @@ public class FileSystemTools
         
         try
         {
+            Console.WriteLine("<START>");
+            Console.WriteLine(await File.ReadAllTextAsync(filePath));
             await Patcher.ApplyPatchAsync(
                 filePath,
                 patch
             );
+            Console.WriteLine("<>");
+            Console.WriteLine(await File.ReadAllTextAsync(filePath));
+            Console.WriteLine("<END>");
 
             return $"{filePath} modified successfully.";
         }
