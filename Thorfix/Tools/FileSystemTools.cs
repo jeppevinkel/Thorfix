@@ -15,6 +15,7 @@ public class FileSystemTools
     [Function("Reads a file from the filesystem")]
     public async Task<string> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
+        Console.WriteLine($"{Path.Combine(RootDirectory.FullName, filePath)} [{RootDirectory.FullName}, {filePath}]");
         filePath = Path.Combine(RootDirectory.FullName, filePath);
         Console.WriteLine($"Read the contents of {filePath}");
         if (!IsPathAllowed(filePath))
