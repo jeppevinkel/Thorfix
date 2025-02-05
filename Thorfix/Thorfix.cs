@@ -103,7 +103,7 @@ public class Thorfix
         {
             CreateRemoteBranch(repository, $"thorfix/{issue.Number}", "master");
             thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
-            thorfixBranch = Commands.Checkout(repository, thorfixBranch);
+            Commands.Checkout(repository, thorfixBranch);
         }
 
         var messages = new List<Message>()
