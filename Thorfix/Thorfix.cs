@@ -158,6 +158,7 @@ public class Thorfix
     {
         try
         {
+            PrintStatus(repository);
             Commands.Stage(repository, "*");
             PrintStatus(repository);
         }
