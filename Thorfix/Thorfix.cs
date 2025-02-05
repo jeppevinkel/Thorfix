@@ -116,6 +116,7 @@ public class Thorfix
         {
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
+            Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ModifyFile)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
         };
 
@@ -147,6 +148,7 @@ public class Thorfix
         StageChanges(repository);
         CommitChanges(repository, $"Thorfix: {issue.Number}");
         PushChanges(repository);
+
 
         Directory.Delete($"/app/repository/{_repoName}");
     }
@@ -206,6 +208,18 @@ public class Thorfix
 
         sb.AppendLine(
             "\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
+        sb.AppendLine(@"File modifications are done through patches.
+The format of the patches is as following:
+@@ -1,6 +1,7 @@
+ Line 3
+-Line 4
++Modified Line 4
+ Line 5
+ Line 6
++New Line
+ Line 7
+ Line 8
+Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file.");
 
         return sb.ToString();
     }
