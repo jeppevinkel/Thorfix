@@ -75,7 +75,7 @@ public class Thorfix
                     }
                     finally
                     {
-                        Directory.Delete($"/app/repository/{_repoName}");
+                        Directory.Delete($"/app/repository/{_repoName}", true);
                         Console.WriteLine($"Done with #{issue.Number}");
                     }
                 }
