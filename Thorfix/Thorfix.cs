@@ -98,7 +98,7 @@ public class Thorfix
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
-            thorfixBranch = Commands.Checkout(repository, thorfixBranch);
+            Commands.Checkout(repository, thorfixBranch);
         }
         else
         {
