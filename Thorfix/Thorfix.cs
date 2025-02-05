@@ -159,7 +159,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         StageChanges(repository);
         CommitChanges(repository, $"Thorfix: {issue.Number}");
-        PushChanges(repository);
+        PushChanges(repository, thorfixBranch);
     }
 
     public void StageChanges(Repository repository)
