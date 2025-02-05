@@ -191,7 +191,6 @@ Where the numbers after @@ - represent the line numbers in the original file and
     {
         try
         {
-            Remote remote = repository.Network.Remotes["origin"];
             var pushOptions = new PushOptions
             {
                 CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
@@ -202,7 +201,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             }
             else
             {
-                repository.Network.Push(remote, repository.Head.FriendlyName, pushOptions);
+                repository.Network.Push(repository.Head, pushOptions);
             }
         }
         catch (Exception e)
