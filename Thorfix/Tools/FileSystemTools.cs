@@ -42,7 +42,6 @@ public class FileSystemTools
     public Task<string> ListFiles()
     {
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories).Select(it => it.Replace(RootDirectory.FullName, ""));
-        Console.WriteLine(string.Join("\n", files));
         return Task.FromResult(string.Join("\n", files));
     }
 
