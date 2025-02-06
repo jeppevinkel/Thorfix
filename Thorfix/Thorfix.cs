@@ -244,7 +244,7 @@ public class Thorfix
             try
             {
                 Remote branchRemote = localRepository.Network.Remotes[branch.RemoteName];
-                string pushRefSpec = string.Format("+{0}:{0}", branch.CanonicalName.Replace("refs/remotes/origin/", "refs/heads/"));
+                string pushRefSpec = string.Format("+HEAD:{0}", branch.CanonicalName.Replace("refs/remotes/origin/", "refs/heads/"));
                 localRepository.Network.Push(branchRemote, pushRefSpec, pushOptions);
             }
             catch (Exception e)
