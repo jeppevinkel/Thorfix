@@ -44,18 +44,75 @@ public class FileSystemTools
         return Task.FromResult(string.Join("\n", files));
     }
 
+//     [Function("Apply a patch to a file in the repository")]
+//     public async Task<string> PatchFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter(@"The format of the patches is as following:
+// @@ -1,6 +1,7 @@
+//  Line 3
+// -Line 4
+// +Modified Line 4
+//  Line 5
+//  Line 6
+// +New Line
+//  Line 7
+//  Line 8
+// Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file. The context of the file must match exactly with the context in the patch.", true)] string patch)
+//     {
+//         filePath = GetFullPath(filePath);
+//         Console.WriteLine($"Modify the contents of {filePath}");
+//         if (!IsPathAllowed(filePath))
+//         {
+//             return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
+//         }
+//         
+//         try
+//         {
+//             Console.WriteLine("<START>");
+//             Console.WriteLine(await File.ReadAllTextAsync(filePath));
+//             Console.WriteLine("<PATCH>");
+//             Console.WriteLine(patch);
+//             await Patcher.ApplyPatchAsync(
+//                 filePath,
+//                 patch
+//             );
+//             Console.WriteLine("<>");
+//             Console.WriteLine(await File.ReadAllTextAsync(filePath));
+//             Console.WriteLine("<END>");
+//
+//             return $"{filePath} modified successfully.";
+//         }
+//         catch (Exception e)
+//         {
+//             Console.WriteLine($"Error while modifying {filePath}: {e.Message}");
+//             return $"Error while modifying {filePath}: {e.Message}";
+//         }
+//         
+//     }
+    
     [Function("Apply a patch to a file in the repository")]
-    public async Task<string> PatchFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter(@"The format of the patches is as following:
-@@ -1,6 +1,7 @@
- Line 3
--Line 4
-+Modified Line 4
- Line 5
- Line 6
-+New Line
- Line 7
- Line 8
-Where the numbers after @@ - represent the line numbers in the original file and the numbers after + represent the line numbers in the modified file. The context of the file must match exactly with the context in the patch.", true)] string patch)
+    public async Task<string> ModifyFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter(@"One or more SEARCH/REPLACE blocks following this exact format:
+  ```
+  <<<<<<< SEARCH
+  [exact content to find]
+  =======
+  [new content to replace with]
+  >>>>>>> REPLACE
+  ```
+  Critical rules:
+  1. SEARCH content must match the associated file section to find EXACTLY:
+     * Match character-for-character including whitespace, indentation, line endings
+     * Include all comments, docstrings, etc.
+  2. SEARCH/REPLACE blocks will ONLY replace the first match occurrence.
+     * Including multiple unique SEARCH/REPLACE blocks if you need to make multiple changes.
+     * Include *just* enough lines in each SEARCH section to uniquely match each set of lines that need to change.
+     * When using multiple SEARCH/REPLACE blocks, list them in the order they appear in the file.
+  3. Keep SEARCH/REPLACE blocks concise:
+     * Break large SEARCH/REPLACE blocks into a series of smaller blocks that each change a small portion of the file.
+     * Include just the changing lines, and a few surrounding lines if needed for uniqueness.
+     * Do not include long runs of unchanging lines in SEARCH/REPLACE blocks.
+     * Each line must be complete. Never truncate lines mid-way through as this can cause matching failures.
+  4. Special operations:
+     * To move code: Use two SEARCH/REPLACE blocks (one to delete from original + one to insert at new location)
+     * To delete code: Use empty REPLACE section", true)] string diff)
     {
         filePath = GetFullPath(filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
@@ -66,17 +123,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         
         try
         {
-            Console.WriteLine("<START>");
-            Console.WriteLine(await File.ReadAllTextAsync(filePath));
-            Console.WriteLine("<PATCH>");
-            Console.WriteLine(patch);
-            await Patcher.ApplyPatchAsync(
-                filePath,
-                patch
-            );
-            Console.WriteLine("<>");
-            Console.WriteLine(await File.ReadAllTextAsync(filePath));
-            Console.WriteLine("<END>");
+            FileModifier.ModifyFile(filePath, diff);
 
             return $"{filePath} modified successfully.";
         }
