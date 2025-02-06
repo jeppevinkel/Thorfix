@@ -155,7 +155,8 @@ public class Thorfix
 
         StageChanges(repository);
         CommitChanges(repository, $"Thorfix: {issue.Number}");
-        PushChanges(repository, thorfixBranch);
+        // PushChanges(repository, thorfixBranch);
+        PushAllBranches(repository);
     }
 
     public void StageChanges(Repository repository)
@@ -236,6 +237,10 @@ public class Thorfix
         
         foreach (Branch branch in localRepository.Branches)
         {
+            if (exceptMain && (branch.FriendlyName.Contains("/main") || branch.FriendlyName.Contains("/master")))
+            {
+                continue;
+            }
             try
             {
                 Remote branchRemote = localRepository.Network.Remotes[branch.RemoteName];
