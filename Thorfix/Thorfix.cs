@@ -104,6 +104,7 @@ public class Thorfix
             thorfixBranch = repository.Branches[thorfixBranch.FriendlyName];
             Commands.Checkout(repository, thorfixBranch);
             branchName = thorfixBranch.FriendlyName.Replace("origin/", "");
+            Console.WriteLine(branchName);
             thorfixBranch = repository.Branches[branchName];
         }
         else
