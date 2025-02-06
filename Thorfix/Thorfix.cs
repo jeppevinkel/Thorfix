@@ -94,14 +94,16 @@ public class Thorfix
     {
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
             $"/app/repository/{_repoName}"));
-        Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.FriendlyName.Contains($"origin/thorfix/{issue.Number}"));
+        Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.RemoteName.Contains($"origin/thorfix/{issue.Number}"));
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
+            Console.WriteLine($"Checking out {thorfixBranch.RemoteName}");
             Commands.Checkout(repository, thorfixBranch);
         }
         else
         {
+            Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
             CreateRemoteBranch(repository, $"thorfix/{issue.Number}-{newBranchName}", "master");
             thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}-{newBranchName}"];
