@@ -94,18 +94,38 @@ public class Thorfix
     {
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
             $"/app/repository/{_repoName}"));
-        Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
+        Branch? thorfixBranch;
+        var trackingBranch = repository.Branches.FirstOrDefault(it => it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
         string? branchName;
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
-        if (thorfixBranch is not null)
+        if (trackingBranch is not null)
         {
-            Console.WriteLine(thorfixBranch.FriendlyName);
-            Console.WriteLine(thorfixBranch.CanonicalName);
-            thorfixBranch = repository.Branches[thorfixBranch.FriendlyName];
-            Commands.Checkout(repository, thorfixBranch);
-            branchName = thorfixBranch.FriendlyName.Replace("origin/", "");
-            Console.WriteLine(branchName);
-            thorfixBranch = repository.Branches[branchName];
+            Console.WriteLine(trackingBranch.FriendlyName);
+            Console.WriteLine(trackingBranch.CanonicalName);
+            
+            thorfixBranch = repository.Head;
+            repository.Branches.Update(thorfixBranch, b => b.TrackedBranch = trackingBranch.CanonicalName);
+            
+            var pullOptions = new PullOptions()
+            {
+                MergeOptions = new MergeOptions()
+                {
+                    FastForwardStrategy = FastForwardStrategy.Default
+                }
+            };
+            
+            MergeResult mergeResult = Commands.Pull(
+                repository,
+                new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
+                pullOptions
+            );
+            
+            // thorfixBranch = repository.Branches[trackingBranch.FriendlyName];
+            // branchName = thorfixBranch.FriendlyName.Replace("origin/", "");
+            // Commands.Fetch(repository, "origin", [branchName], new FetchOptions(){CredentialsProvider = (_, _, _) => _usernamePasswordCredentials}, "+refs/heads/*:refs/remotes/origin/*");
+            // Commands.Checkout(repository, thorfixBranch);
+            // Console.WriteLine(branchName);
+            // thorfixBranch = repository.Branches[branchName];
         }
         else
         {
