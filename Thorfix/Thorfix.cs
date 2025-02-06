@@ -95,17 +95,18 @@ public class Thorfix
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
             $"/app/repository/{_repoName}"));
         Branch? thorfixBranch;
-        var trackingBranch = repository.Branches.FirstOrDefault(it => it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
-        string? branchName;
-        // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
+        Branch? trackingBranch =
+            repository.Branches.FirstOrDefault(it =>
+                it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
+
         if (trackingBranch is not null)
         {
             Console.WriteLine(trackingBranch.FriendlyName);
             Console.WriteLine(trackingBranch.CanonicalName);
-            
+
             thorfixBranch = repository.Head;
             repository.Branches.Update(thorfixBranch, b => b.TrackedBranch = trackingBranch.CanonicalName);
-            
+
             var pullOptions = new PullOptions()
             {
                 MergeOptions = new MergeOptions()
@@ -113,33 +114,25 @@ public class Thorfix
                     FastForwardStrategy = FastForwardStrategy.Default
                 }
             };
-            
+
             MergeResult mergeResult = Commands.Pull(
                 repository,
                 new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
                 pullOptions
             );
-            
-            // thorfixBranch = repository.Branches[trackingBranch.FriendlyName];
-            // branchName = thorfixBranch.FriendlyName.Replace("origin/", "");
-            // Commands.Fetch(repository, "origin", [branchName], new FetchOptions(){CredentialsProvider = (_, _, _) => _usernamePasswordCredentials}, "+refs/heads/*:refs/remotes/origin/*");
-            // Commands.Checkout(repository, thorfixBranch);
-            // Console.WriteLine(branchName);
-            // thorfixBranch = repository.Branches[branchName];
         }
         else
         {
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
-            branchName = $"thorfix/{issue.Number}-{newBranchName}";
+            var branchName = $"thorfix/{issue.Number}-{newBranchName}";
             thorfixBranch = CreateRemoteBranch(repository, branchName, "master");
-            // thorfixBranch = repository.Branches[$"thorfix/{issue.Number}-{newBranchName}"];
             Commands.Checkout(repository, thorfixBranch);
         }
 
         var messages = new List<Message>()
         {
-            new Message(RoleType.User, GenerateContext(issue))
+            new(RoleType.User, GenerateContext(issue))
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
@@ -181,7 +174,6 @@ public class Thorfix
         StageChanges(repository);
         CommitChanges(repository, $"Thorfix: {issue.Number}");
         PushChanges(repository, thorfixBranch);
-        // PushAllBranches(repository);
     }
 
     public void StageChanges(Repository repository)
@@ -197,14 +189,14 @@ public class Thorfix
             Console.WriteLine("Exception:RepoActions:StageChanges " + ex.Message);
         }
     }
-    
+
     public void PrintStatus(Repository repository)
     {
         try
         {
             var status = repository.RetrieveStatus();
             Console.WriteLine("Status: " + status);
-            
+
             var changes = repository.Diff.Compare<TreeChanges>();
             foreach (var change in changes)
             {
@@ -253,48 +245,23 @@ public class Thorfix
         }
     }
 
-    private void PushAllBranches(Repository localRepository, bool exceptMain = true)
-    {
-        var pushOptions = new PushOptions
-        {
-            CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
-        };
-        
-        foreach (Branch branch in localRepository.Branches)
-        {
-            if (exceptMain && (branch.FriendlyName.Contains("/main") || branch.FriendlyName.Contains("/master")))
-            {
-                continue;
-            }
-            try
-            {
-                Remote branchRemote = localRepository.Network.Remotes[branch.RemoteName];
-                string pushRefSpec = string.Format("+HEAD:{0}", branch.CanonicalName.Replace("refs/remotes/origin/", "refs/heads/"));
-                localRepository.Network.Push(branchRemote, pushRefSpec, pushOptions);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
-            }
-        }
-    }
-    
     private Branch? CreateRemoteBranch(Repository repository, string branchName, string sourceBranchName)
     {
         Branch? sourceBranch = repository.Branches[$"origin/{sourceBranchName}"];
         Branch? remoteBranch = repository.Branches[$"origin/{branchName}"];
-        
+
         var pushOptions = new PushOptions
         {
             CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
         };
-        
+
         if (remoteBranch == null)
         {
             Branch? localBranch = repository.CreateBranch(branchName, sourceBranch.Tip);
-            
+
             Remote? remote = repository.Network.Remotes.First();
-            repository.Branches.Update(localBranch, b => b.Remote = remote.Name, b => b.UpstreamBranch = localBranch.CanonicalName);
+            repository.Branches.Update(localBranch, b => b.Remote = remote.Name,
+                b => b.UpstreamBranch = localBranch.CanonicalName);
             repository.Network.Push(localBranch, pushOptions);
             return localBranch;
         }
@@ -339,12 +306,12 @@ Where the numbers after @@ - represent the line numbers in the original file and
         sb.AppendLine("The name should not contain spaces.");
         sb.AppendLine("The only allowed special characters are dashes and underscores.");
         sb.AppendLine("Don't respond with anything other than the branch name.");
-        
+
         var messages = new List<Message>()
         {
             new(RoleType.User, sb.ToString())
         };
-        
+
         var parameters = new MessageParameters()
         {
             Messages = messages,
