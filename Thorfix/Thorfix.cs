@@ -95,6 +95,7 @@ public class Thorfix
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
             $"/app/repository/{_repoName}"));
         Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
+        string? branchName;
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
@@ -102,12 +103,15 @@ public class Thorfix
             Console.WriteLine(thorfixBranch.CanonicalName);
             thorfixBranch = repository.Branches[thorfixBranch.FriendlyName];
             Commands.Checkout(repository, thorfixBranch);
+            branchName = thorfixBranch.FriendlyName.Replace("origin/", "");
+            thorfixBranch = repository.Branches[branchName];
         }
         else
         {
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
-            thorfixBranch = CreateRemoteBranch(repository, $"thorfix/{issue.Number}-{newBranchName}", "master");
+            branchName = $"thorfix/{issue.Number}-{newBranchName}";
+            thorfixBranch = CreateRemoteBranch(repository, branchName, "master");
             // thorfixBranch = repository.Branches[$"thorfix/{issue.Number}-{newBranchName}"];
             Commands.Checkout(repository, thorfixBranch);
         }
@@ -155,8 +159,8 @@ public class Thorfix
 
         StageChanges(repository);
         CommitChanges(repository, $"Thorfix: {issue.Number}");
-        // PushChanges(repository, thorfixBranch);
-        PushAllBranches(repository);
+        PushChanges(repository, thorfixBranch);
+        // PushAllBranches(repository);
     }
 
     public void StageChanges(Repository repository)
