@@ -1,7 +1,8 @@
-bin/
+bin/*/
 obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
 .idea
 *.sln.DotSettings.user
+*.log
