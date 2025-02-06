@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Anthropic.SDK;
 using Anthropic.SDK.Common;
 using Anthropic.SDK.Constants;
@@ -132,7 +132,7 @@ public class Thorfix
 
         var messages = new List<Message>()
         {
-            new(RoleType.User, GenerateContext(issue))
+            new(RoleType.User, await GenerateContext(issue))
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
@@ -270,15 +270,34 @@ public class Thorfix
         return null;
     }
 
-    private static string GenerateContext(Issue issue)
+    private async Task<string> GenerateContext(Issue issue)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You are a software development bot. Your task is to fix the following issue:");
         sb.AppendLine($"Issue Title: {issue.Title}");
         sb.AppendLine($"Issue Description: {issue.Body}");
+        
+        // Get all comments on the issue
+        var comments = await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number);
+        if (comments.Any())
+        {
+            sb.AppendLine("\nPrevious conversation history:");
+            foreach (var comment in comments)
+            {
+                if (comment.Body.Contains("[FROM THOR]"))
+                {
+                    // Remove the [FROM THOR] marker and add as assistant message
+                    sb.AppendLine("Assistant: " + comment.Body.Replace("[FROM THOR]\n\n", "").Trim());
+                }
+                else 
+                {
+                    sb.AppendLine("User: " + comment.Body.Trim());
+                }
+                sb.AppendLine(); // Add blank line between messages
+            }
+        }
 
-        sb.AppendLine(
-            "\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
+        sb.AppendLine("\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
         sb.AppendLine(@"The tool to modify files uses patches to define the modifications.
 The format of the patches is as following:
 @@ -1,6 +1,7 @@
