@@ -94,11 +94,14 @@ public class Thorfix
     {
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
             $"/app/repository/{_repoName}"));
-        Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.RemoteName.Contains($"origin/thorfix/{issue.Number}"));
+        Branch? thorfixBranch = repository.Branches.FirstOrDefault(it => it.UpstreamBranchCanonicalName.Contains($"origin/thorfix/{issue.Number}"));
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
             Console.WriteLine($"Checking out {thorfixBranch.RemoteName}");
+            Console.WriteLine($"Checking out {thorfixBranch.UpstreamBranchCanonicalName}");
+            Console.WriteLine($"Checking out {thorfixBranch.FriendlyName}");
+            Console.WriteLine($"Checking out {thorfixBranch.CanonicalName}");
             Commands.Checkout(repository, thorfixBranch);
         }
         else
@@ -107,6 +110,10 @@ public class Thorfix
             var newBranchName = await GenerateBranchName(issue);
             CreateRemoteBranch(repository, $"thorfix/{issue.Number}-{newBranchName}", "master");
             thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}-{newBranchName}"];
+            Console.WriteLine($"Checking out {thorfixBranch.RemoteName}");
+            Console.WriteLine($"Checking out {thorfixBranch.UpstreamBranchCanonicalName}");
+            Console.WriteLine($"Checking out {thorfixBranch.FriendlyName}");
+            Console.WriteLine($"Checking out {thorfixBranch.CanonicalName}");
             Commands.Checkout(repository, thorfixBranch);
         }
 
