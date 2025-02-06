@@ -98,7 +98,7 @@ public class Thorfix
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
-            Commands.Checkout(repository, thorfixBranch);
+            thorfixBranch = Commands.Checkout(repository, thorfixBranch);
         }
         else
         {
@@ -221,6 +221,28 @@ public class Thorfix
         catch (Exception e)
         {
             Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
+        }
+    }
+
+    private void PushAllBranches(Repository localRepository, bool exceptMain = true)
+    {
+        var pushOptions = new PushOptions
+        {
+            CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
+        };
+        
+        foreach (Branch branch in localRepository.Branches)
+        {
+            try
+            {
+                Remote branchRemote = localRepository.Network.Remotes[branch.RemoteName];
+                string pushRefSpec = string.Format("+{0}:{0}", branch.CanonicalName.Replace("refs/remotes/origin/", "refs/heads/"));
+                localRepository.Network.Push(branchRemote, pushRefSpec, pushOptions);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
+            }
         }
     }
     
