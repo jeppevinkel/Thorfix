@@ -1,4 +1,5 @@
-﻿namespace Thorfix;
+// Main entry point for the Thorfix application
+namespace Thorfix;
 
 internal static class Program
 {
