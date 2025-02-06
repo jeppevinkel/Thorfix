@@ -98,14 +98,17 @@ public class Thorfix
         // Branch? thorfixBranch = repository.Branches[$"origin/thorfix/{issue.Number}"];
         if (thorfixBranch is not null)
         {
-            thorfixBranch = Commands.Checkout(repository, thorfixBranch);
+            Console.WriteLine(thorfixBranch.FriendlyName);
+            Console.WriteLine(thorfixBranch.CanonicalName);
+            thorfixBranch = repository.Branches[thorfixBranch.FriendlyName];
+            Commands.Checkout(repository, thorfixBranch);
         }
         else
         {
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
-            CreateRemoteBranch(repository, $"thorfix/{issue.Number}-{newBranchName}", "master");
-            thorfixBranch = repository.Branches[$"thorfix/{issue.Number}-{newBranchName}"];
+            thorfixBranch = CreateRemoteBranch(repository, $"thorfix/{issue.Number}-{newBranchName}", "master");
+            // thorfixBranch = repository.Branches[$"thorfix/{issue.Number}-{newBranchName}"];
             Commands.Checkout(repository, thorfixBranch);
         }
 
@@ -246,7 +249,7 @@ public class Thorfix
         }
     }
     
-    private void CreateRemoteBranch(Repository repository, string branchName, string sourceBranchName)
+    private Branch? CreateRemoteBranch(Repository repository, string branchName, string sourceBranchName)
     {
         Branch? sourceBranch = repository.Branches[$"origin/{sourceBranchName}"];
         Branch? remoteBranch = repository.Branches[$"origin/{branchName}"];
@@ -263,11 +266,11 @@ public class Thorfix
             Remote? remote = repository.Network.Remotes.First();
             repository.Branches.Update(localBranch, b => b.Remote = remote.Name, b => b.UpstreamBranch = localBranch.CanonicalName);
             repository.Network.Push(localBranch, pushOptions);
+            return localBranch;
         }
-        else
-        {
-            Console.WriteLine($"Can't create branch '{branchName}' because it already exists.");
-        }
+
+        Console.WriteLine($"Can't create branch '{branchName}' because it already exists.");
+        return null;
     }
 
     private static string GenerateContext(Issue issue)
