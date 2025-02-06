@@ -99,10 +99,14 @@ public class Thorfix
             repository.Branches.FirstOrDefault(it =>
                 it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
 
+        string? branchName;
+
         if (trackingBranch is not null)
         {
             Console.WriteLine(trackingBranch.FriendlyName);
             Console.WriteLine(trackingBranch.CanonicalName);
+            
+            branchName = $"thorfix/{issue.Number}-{trackingBranch.FriendlyName.Replace("origin/", "")}";
 
             thorfixBranch = repository.Head;
             repository.Branches.Update(thorfixBranch, b => b.TrackedBranch = trackingBranch.CanonicalName);
@@ -125,7 +129,7 @@ public class Thorfix
         {
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
-            var branchName = $"thorfix/{issue.Number}-{newBranchName}";
+            branchName = $"thorfix/{issue.Number}-{newBranchName}";
             thorfixBranch = CreateRemoteBranch(repository, branchName, "master");
             Commands.Checkout(repository, thorfixBranch);
         }
@@ -136,7 +140,7 @@ public class Thorfix
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
-        GithubTools githubTools = new GithubTools(_github, issue, _repoOwner, _repoName);
+        GithubTools githubTools = new GithubTools(_github, issue, branchName, _repoOwner, _repoName);
 
         var tools = new List<Tool>
         {
