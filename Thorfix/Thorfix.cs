@@ -204,8 +204,21 @@ public class Thorfix
                     }
                     else
                     {
-                        // Add a comment explaining why the changes don't meet requirements
-                        await githubTools.IssueAddComment($"[FROM THOR]\n\nCurrent changes do not fully satisfy the requirements. Reason:\n{verificationResponse.Message.Content}\n\nContinuing with further modifications...");
+                        // Add a detailed comment explaining why the changes don't meet requirements
+                        var commentBuilder = new StringBuilder();
+                        commentBuilder.AppendLine("[FROM THOR]");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("The current code changes do not fully satisfy the original requirements.");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("Reason for incompleteness:");
+                        commentBuilder.AppendLine(verificationResponse.Message.Content.Trim());
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("Next steps:");
+                        commentBuilder.AppendLine("1. The current changes will be reset");
+                        commentBuilder.AppendLine("2. I will make additional modifications to address the missing requirements");
+                        commentBuilder.AppendLine("3. The changes will be re-evaluated against the original issue requirements");
+                        
+                        await githubTools.IssueAddComment(commentBuilder.ToString());
                         
                         // Reset the changes since we're not done
                         repository.Reset(ResetMode.Hard);
