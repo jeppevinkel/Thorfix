@@ -8,7 +8,7 @@ public class FileModifier
     private const string DividerMarker = "=======";
     private const string ReplaceMarker = ">>>>>>> REPLACE";
 
-    public static void ModifyFile(string path, string diffContent)
+    public static async Task ModifyFile(string path, string diffContent)
     {
         if (string.IsNullOrEmpty(path))
             throw new ArgumentException("Path cannot be empty", nameof(path));
@@ -28,7 +28,7 @@ public class FileModifier
         modifiedContent = blocks.Aggregate(modifiedContent, ApplyDiffBlock);
 
         // Write the modified content back to the file
-        File.WriteAllText(path, modifiedContent);
+        await File.WriteAllTextAsync(path, modifiedContent);
     }
 
     private static List<(string Search, string Replace)> ParseDiffBlocks(string diffContent)

@@ -4,14 +4,12 @@ namespace Thorfix.Tools;
 
 public class FileSystemTools
 {
-    
     private static readonly DirectoryInfo RootDirectory = new DirectoryInfo("/app/repository");
 
     public FileSystemTools()
     {
-        
     }
-    
+
     [Function("Reads a file from the filesystem")]
     public async Task<string> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
@@ -33,6 +31,7 @@ public class FileSystemTools
             {
                 message = message.Replace(RootDirectory.FullName, "");
             }
+
             return $"Failed to read file: {message}";
         }
     }
@@ -40,12 +39,36 @@ public class FileSystemTools
     [Function("List all files in the repository")]
     public Task<string> ListFiles()
     {
-        var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories).Select(it => it.Replace(RootDirectory.FullName, ""));
+        var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories)
+            .Select(it => it.Replace(RootDirectory.FullName, ""));
         return Task.FromResult(string.Join("\n", files));
     }
-    
+
+    [Function("Write a file to the filesystem")]
+    public async Task<string> WriteFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The content to write to the file. This must be the entire content of the file and written exactly how the file is supposed to end up.", true)] string content)
+    {
+        filePath = GetFullPath(filePath);
+        Console.WriteLine($"Write the contents of {filePath}");
+        if (!IsPathAllowed(filePath))
+        {
+            return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
+        }
+
+        try
+        {
+            await File.WriteAllTextAsync(filePath, content);
+            return $"Successfully wrote {content.Length} bytes to {filePath}";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error while writing {filePath}: {e.Message}");
+            return $"Error while writing {filePath}: {e.Message}";
+        }
+    }
+
     [Function("Apply a patch to a file in the repository")]
-    public async Task<string> ModifyFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter(@"One or more SEARCH/REPLACE blocks following this exact format:
+    public async Task<string> ModifyFile([FunctionParameter("Path to the file", true)] string filePath,
+        [FunctionParameter(@"One or more SEARCH/REPLACE blocks following this exact format:
   ```
   <<<<<<< SEARCH
   [exact content to find]
@@ -68,7 +91,8 @@ public class FileSystemTools
      * Each line must be complete. Never truncate lines mid-way through as this can cause matching failures.
   4. Special operations:
      * To move code: Use two SEARCH/REPLACE blocks (one to delete from original + one to insert at new location)
-     * To delete code: Use empty REPLACE section", true)] string diff)
+     * To delete code: Use empty REPLACE section", true)]
+        string diff)
     {
         filePath = GetFullPath(filePath);
         Console.WriteLine($"Modify the contents of {filePath}");
@@ -76,10 +100,10 @@ public class FileSystemTools
         {
             return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
         }
-        
+
         try
         {
-            FileModifier.ModifyFile(filePath, diff);
+            await FileModifier.ModifyFile(filePath, diff);
 
             return $"{filePath} modified successfully.";
         }
@@ -88,7 +112,6 @@ public class FileSystemTools
             Console.WriteLine($"Error while modifying {filePath}: {e.Message}");
             return $"Error while modifying {filePath}: {e.Message}";
         }
-        
     }
 
     private static bool IsPathAllowed(string filePath)
@@ -104,6 +127,7 @@ public class FileSystemTools
         {
             filePath = filePath[1..];
         }
+
         return Path.Combine(RootDirectory.FullName, filePath);
     }
 }
