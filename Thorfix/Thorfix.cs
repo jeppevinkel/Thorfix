@@ -192,7 +192,7 @@ public class Thorfix
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     messages.Add(verificationResponse.Message);
                     
-                    var content = verificationResponse.Message.Content;
+                    var content = verificationResponse.Message.ToString();
                     if (string.Equals(content?.Trim() ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
@@ -217,7 +217,7 @@ public class Thorfix
                         commentBuilder.AppendLine(issue.Body);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Feedback on Current Implementation:**");
-                        var feedbackContent = verificationResponse.Message.Content?.Trim() ?? "";
+                        var feedbackContent = verificationResponse.Message.ToString()?.Trim() ?? "";
                         commentBuilder.AppendLine(feedbackContent);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Next Steps:**");
