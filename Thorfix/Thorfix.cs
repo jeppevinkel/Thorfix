@@ -403,7 +403,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
 
-        var branchName = res.Message.Content?.ToString().Trim() ?? "";
+        var branchName = res.Message?.ToString().Trim() ?? "";
 
         return branchName.Replace(' ', '-');
     }
