@@ -193,7 +193,7 @@ public class Thorfix
                     messages.Add(verificationResponse.Message);
                     
                     var response = verificationResponse.Message.Content;
-                    if (response != null && response.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase))
+                    if (response?.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: {issue.Number}");
@@ -217,8 +217,8 @@ public class Thorfix
                         commentBuilder.AppendLine(issue.Body);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Feedback on Current Implementation:**");
-                        var feedbackContent = verificationResponse.Message.Content;
-                        commentBuilder.AppendLine(feedbackContent != null ? feedbackContent.Trim() : "");
+                        var feedbackContent = verificationResponse.Message.Content ?? "";
+                        commentBuilder.AppendLine(feedbackContent.Trim());
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Next Steps:**");
                         commentBuilder.AppendLine("1. 🔄 Current changes will be reset");
