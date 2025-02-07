@@ -208,15 +208,22 @@ public class Thorfix
                         var commentBuilder = new StringBuilder();
                         commentBuilder.AppendLine("[FROM THOR]");
                         commentBuilder.AppendLine();
-                        commentBuilder.AppendLine("The current code changes do not fully satisfy the original requirements.");
+                        commentBuilder.AppendLine("⚠️ Code Review Results: Requirements Not Yet Met");
                         commentBuilder.AppendLine();
-                        commentBuilder.AppendLine("Reason for incompleteness:");
+                        commentBuilder.AppendLine("I've reviewed the current code changes against the original requirements:");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("**Original Requirements:**");
+                        commentBuilder.AppendLine(issue.Body);
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("**Feedback on Current Implementation:**");
                         commentBuilder.AppendLine(verificationResponse.Message.Content.Trim());
                         commentBuilder.AppendLine();
-                        commentBuilder.AppendLine("Next steps:");
-                        commentBuilder.AppendLine("1. The current changes will be reset");
-                        commentBuilder.AppendLine("2. I will make additional modifications to address the missing requirements");
-                        commentBuilder.AppendLine("3. The changes will be re-evaluated against the original issue requirements");
+                        commentBuilder.AppendLine("**Next Steps:**");
+                        commentBuilder.AppendLine("1. 🔄 Current changes will be reset");
+                        commentBuilder.AppendLine("2. ✍️ I will make additional modifications to address the gaps identified above");
+                        commentBuilder.AppendLine("3. 🔍 Changes will be re-evaluated against requirements");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("I'll continue iterating until all requirements are met.");
                         
                         await githubTools.IssueAddComment(commentBuilder.ToString());
                         
