@@ -192,7 +192,7 @@ public class Thorfix
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     messages.Add(verificationResponse.Message);
                     
-                    if (verificationResponse.Message.Content.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase))
+                    if (verificationResponse.Message.Content?.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: {issue.Number}");
