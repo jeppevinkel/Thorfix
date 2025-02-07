@@ -161,23 +161,81 @@ public class Thorfix
         };
 
         MessageResponse? res;
-        do
+        bool isComplete = false;
+        
+        while (!isComplete)
         {
             res = await _claude.Messages.GetClaudeMessageAsync(parameters);
-
             messages.Add(res.Message);
 
+            // Process tool calls
             foreach (Function? toolCall in res.ToolCalls)
             {
                 var response = await toolCall.InvokeAsync<string>();
-
                 messages.Add(new Message(toolCall, response));
             }
-        } while (res.ToolCalls?.Count > 0);
 
-        StageChanges(repository);
-        CommitChanges(repository, $"Thorfix: {issue.Number}");
-        PushChanges(repository, thorfixBranch);
+            if (res.ToolCalls?.Count == 0)
+            {
+                // No more tool calls - let's check if the changes satisfy the requirements
+                StageChanges(repository);
+                var changes = repository.Diff.Compare<TreeChanges>();
+                
+                if (changes.Any())
+                {
+                    // We have changes - let's verify them
+                    messages.Add(new Message(RoleType.User, 
+                        "Please review the changes made and confirm if they complete the requirements from the original issue. " +
+                        "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
+                        "Original issue description: " + issue.Body));
+                    
+                    var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
+                    messages.Add(verificationResponse.Message);
+                    
+                    var content = verificationResponse.Message.Content;
+                    var response = content?.Trim();
+                    if (response?.Equals("COMPLETE", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        isComplete = true;
+                        CommitChanges(repository, $"Thorfix: {issue.Number}");
+                        PushChanges(repository, thorfixBranch);
+                        
+                        // Convert to pull request since we're done
+                        await githubTools.ConvertIssueToPullRequest();
+                        await githubTools.IssueAddComment("Changes have been completed and a pull request has been created.");
+                    }
+                    else
+                    {
+                        // Add a detailed comment explaining why the changes don't meet requirements
+                        var commentBuilder = new StringBuilder();
+                        commentBuilder.AppendLine("[FROM THOR]");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("⚠️ Code Review Results: Requirements Not Yet Met");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("I've reviewed the current code changes against the original requirements:");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("**Original Requirements:**");
+                        commentBuilder.AppendLine(issue.Body);
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("**Feedback on Current Implementation:**");
+                        var feedbackContent = verificationResponse.Message.Content?.Trim() ?? "";
+                        commentBuilder.AppendLine(feedbackContent);
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("**Next Steps:**");
+                        commentBuilder.AppendLine("1. 🔄 Current changes will be reset");
+                        commentBuilder.AppendLine("2. ✍️ I will make additional modifications to address the gaps identified above");
+                        commentBuilder.AppendLine("3. 🔍 Changes will be re-evaluated against requirements");
+                        commentBuilder.AppendLine();
+                        commentBuilder.AppendLine("I'll continue iterating until all requirements are met.");
+                        
+                        await githubTools.IssueAddComment(commentBuilder.ToString());
+                        
+                        // Reset the changes since we're not done
+                        repository.Reset(ResetMode.Hard);
+                    }
+                }
+            }
+        }
     }
 
     public void StageChanges(Repository repository)
@@ -346,7 +404,8 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
 
-        var branchName = res.Message.ToString();
+        var content = res.Message.Content;
+        var branchName = content?.Trim() ?? "";
 
         return branchName.Replace(' ', '-');
     }
