@@ -193,7 +193,7 @@ public class Thorfix
                     messages.Add(verificationResponse.Message);
                     
                     var content = verificationResponse.Message.Content;
-                    if (content?.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase) == true)
+                    if (string.Equals(content?.Trim() ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: {issue.Number}");
@@ -403,7 +403,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
 
-        var branchName = res.Message.Content?.Trim() ?? "";
+        var branchName = res.Message.Content?.ToString().Trim() ?? "";
 
         return branchName.Replace(' ', '-');
     }
