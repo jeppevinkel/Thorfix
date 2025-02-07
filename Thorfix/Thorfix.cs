@@ -192,7 +192,8 @@ public class Thorfix
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     messages.Add(verificationResponse.Message);
                     
-                    if (verificationResponse.Message.Content?.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase) == true)
+                    var content = verificationResponse.Message.Content?.Trim() ?? "";
+                    if (content.Equals("COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: {issue.Number}");
@@ -216,7 +217,7 @@ public class Thorfix
                         commentBuilder.AppendLine(issue.Body);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Feedback on Current Implementation:**");
-                        commentBuilder.AppendLine(verificationResponse.Message.Content.Trim());
+                        commentBuilder.AppendLine(verificationResponse.Message.Content?.Trim() ?? "");
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Next Steps:**");
                         commentBuilder.AppendLine("1. 🔄 Current changes will be reset");
@@ -401,7 +402,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
 
-        var branchName = res.Message.ToString();
+        var branchName = res.Message.Content?.Trim() ?? "";
 
         return branchName.Replace(' ', '-');
     }
