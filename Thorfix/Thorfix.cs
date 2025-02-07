@@ -204,6 +204,9 @@ public class Thorfix
                     }
                     else
                     {
+                        // Add a comment explaining why the changes don't meet requirements
+                        await githubTools.IssueAddComment($"[FROM THOR]\n\nCurrent changes do not fully satisfy the requirements. Reason:\n{verificationResponse.Message.Content}\n\nContinuing with further modifications...");
+                        
                         // Reset the changes since we're not done
                         repository.Reset(ResetMode.Hard);
                     }
