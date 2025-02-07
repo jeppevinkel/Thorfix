@@ -192,7 +192,8 @@ public class Thorfix
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     messages.Add(verificationResponse.Message);
                     
-                    var response = verificationResponse.Message.Content?.Trim();
+                    var content = verificationResponse.Message.Content;
+                    var response = content?.Trim();
                     if (response?.Equals("COMPLETE", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         isComplete = true;
@@ -403,7 +404,8 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
 
-        var branchName = res.Message.Content?.Trim() ?? "";
+        var content = res.Message.Content;
+        var branchName = content?.Trim() ?? "";
 
         return branchName.Replace(' ', '-');
     }
