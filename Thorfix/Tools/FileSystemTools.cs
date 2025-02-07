@@ -38,10 +38,10 @@ public class FileSystemTools
     }
 
     [Function("List all files in the repository")]
-    public string ListFiles()
+    public Task<string> ListFiles()
     {
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories).Select(it => it.Replace(RootDirectory.FullName, ""));
-        return string.Join("\n", files);
+        return Task.FromResult(string.Join("\n", files));
     }
 
 //     [Function("Apply a patch to a file in the repository")]
