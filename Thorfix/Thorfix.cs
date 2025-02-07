@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Anthropic.SDK;
 using Anthropic.SDK.Common;
 using Anthropic.SDK.Constants;
@@ -178,8 +179,8 @@ public class Thorfix
             if (res.ToolCalls?.Count == 0)
             {
                 // No more tool calls - let's check if the changes satisfy the requirements
-                StageChanges(repository);
                 var changes = repository.Diff.Compare<TreeChanges>();
+                StageChanges(repository);
                 
                 // print number of changes and changed files
                 Console.WriteLine($"Number of changes: {changes.Count()}");
@@ -264,7 +265,13 @@ public class Thorfix
         try
         {
             var status = repository.RetrieveStatus();
-            Console.WriteLine("Status: " + status);
+            // Console.WriteLine("Status: " + status.);
+
+            foreach (StatusEntry statusEntry in status)
+            {
+                
+                Console.WriteLine($"{statusEntry.State} {statusEntry.FilePath}");
+            }
 
             var changes = repository.Diff.Compare<TreeChanges>();
             foreach (var change in changes)
@@ -356,7 +363,7 @@ public class Thorfix
                 if (comment.Body.Contains("[FROM THOR]"))
                 {
                     // Remove the [FROM THOR] marker and add as assistant message
-                    sb.AppendLine("Assistant: " + comment.Body.Replace("[FROM THOR]\n\n", "").Trim());
+                    sb.AppendLine("Assistant: " + comment.Body.Replace("[FROM THOR]", "").Trim());
                 }
                 else 
                 {
@@ -414,5 +421,10 @@ Where the numbers after @@ - represent the line numbers in the original file and
         var branchName = res.Message?.ToString().Trim() ?? "";
 
         return branchName.Replace(' ', '-');
+    }
+    
+    private string RemoveEmptyLines(string lines)
+    {
+        return Regex.Replace(lines, @"^\s*$\n|\r", string.Empty, RegexOptions.Multiline).TrimEnd();
     }
 }
