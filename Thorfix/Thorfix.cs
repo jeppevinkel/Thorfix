@@ -197,7 +197,16 @@ public class Thorfix
                         "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
                     
-                    var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
+                    var reviewParameters = new MessageParameters()
+                    {
+                        Messages = messages,
+                        MaxTokens = 4048,
+                        Model = AnthropicModels.Claude35Sonnet,
+                        Stream = false,
+                        Temperature = 1.0m,
+                    };
+                    
+                    var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(reviewParameters);
                     messages.Add(verificationResponse.Message);
                     
                     var content = verificationResponse.Message.ToString();
