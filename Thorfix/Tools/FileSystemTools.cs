@@ -38,7 +38,7 @@ public class FileSystemTools
     }
 
     [Function("List all files in the repository")]
-    public Task<string> ListFiles()
+    public string ListFiles()
     {
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories).Select(it => it.Replace(RootDirectory.FullName, ""));
         return string.Join("\n", files);

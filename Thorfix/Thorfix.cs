@@ -192,8 +192,8 @@ public class Thorfix
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     messages.Add(verificationResponse.Message);
                     
-                    var content = verificationResponse.Message.Content?.Trim() ?? "";
-                    if (content.Equals("COMPLETE", StringComparison.OrdinalIgnoreCase))
+                    var response = verificationResponse.Message.Content;
+                    if (response != null && response.Trim().Equals("COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: {issue.Number}");
@@ -217,7 +217,8 @@ public class Thorfix
                         commentBuilder.AppendLine(issue.Body);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Feedback on Current Implementation:**");
-                        commentBuilder.AppendLine(verificationResponse.Message.Content?.Trim() ?? "");
+                        var feedbackContent = verificationResponse.Message.Content;
+                        commentBuilder.AppendLine(feedbackContent != null ? feedbackContent.Trim() : "");
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Next Steps:**");
                         commentBuilder.AppendLine("1. 🔄 Current changes will be reset");
