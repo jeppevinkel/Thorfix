@@ -189,6 +189,67 @@ public class Thorfix
                 {
                     Console.WriteLine($"{change.Status} {change.Path}");
                 }
+
+                // Test if the code can be built
+                if (changes.Any())
+                {
+                    Console.WriteLine("Testing if code can be built...");
+                    try
+                    {
+                        var buildProcess = new System.Diagnostics.Process
+                        {
+                            StartInfo = new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = "dotnet",
+                                Arguments = "build",
+                                WorkingDirectory = $"/app/repository/{_repoName}",
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                                UseShellExecute = false,
+                                CreateNoWindow = true
+                            }
+                        };
+
+                        buildProcess.Start();
+                        string output = buildProcess.StandardOutput.ReadToEnd();
+                        string error = buildProcess.StandardError.ReadToEnd();
+                        buildProcess.WaitForExit();
+
+                        if (buildProcess.ExitCode != 0)
+                        {
+                            Console.WriteLine("Build failed!");
+                            Console.WriteLine($"Build output: {output}");
+                            Console.WriteLine($"Build errors: {error}");
+                            
+                            // Add build failure comment
+                            var failureComment = new StringBuilder();
+                            failureComment.AppendLine("[FROM THOR]");
+                            failureComment.AppendLine();
+                            failureComment.AppendLine("⚠️ Build Failure");
+                            failureComment.AppendLine();
+                            failureComment.AppendLine("The changes I made resulted in build failures:");
+                            failureComment.AppendLine();
+                            failureComment.AppendLine("```");
+                            failureComment.AppendLine(error);
+                            failureComment.AppendLine("```");
+                            failureComment.AppendLine();
+                            failureComment.AppendLine("I'll review and fix these build errors before proceeding.");
+                            
+                            await githubTools.IssueAddComment(failureComment.ToString());
+                            
+                            // Reset changes and continue the loop
+                            repository.Reset(ResetMode.Hard);
+                            continue;
+                        }
+                        
+                        Console.WriteLine("Build successful!");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during build test: {ex.Message}");
+                        throw;
+                    }
+                }
                 
                 if (changes.Any())
                 {
