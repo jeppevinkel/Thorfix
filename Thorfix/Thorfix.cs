@@ -215,7 +215,7 @@ public class Thorfix
                     if (string.Equals(content?.Trim() ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
-                        CommitChanges(repository, $"Thorfix: {issue.Number}");
+                        CommitChanges(repository, $"Thorfix: #{issue.Number}");
                         PushChanges(repository, thorfixBranch);
                         
                         // Convert to pull request since we're done
