@@ -186,7 +186,7 @@ public class Thorfix
                 Console.WriteLine($"Number of changes: {changes.Count()}");
                 foreach (TreeEntryChanges? change in changes)
                 {
-                    Console.WriteLine($"Changed file: {change.Path}");
+                    Console.WriteLine($"{change.Status} {change.Path}");
                 }
                 
                 if (changes.Any())
@@ -250,38 +250,11 @@ public class Thorfix
     {
         try
         {
-            PrintStatus(repository);
             Commands.Stage(repository, "*");
-            PrintStatus(repository);
         }
         catch (Exception ex)
         {
             Console.WriteLine("Exception:RepoActions:StageChanges " + ex.Message);
-        }
-    }
-
-    public void PrintStatus(Repository repository)
-    {
-        try
-        {
-            var status = repository.RetrieveStatus();
-            // Console.WriteLine("Status: " + status.);
-
-            foreach (StatusEntry statusEntry in status)
-            {
-                
-                Console.WriteLine($"{statusEntry.State} {statusEntry.FilePath}");
-            }
-
-            var changes = repository.Diff.Compare<TreeChanges>();
-            foreach (var change in changes)
-            {
-                Console.WriteLine($"{change.Status} {change.Path}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Exception:RepoActions:PrintStatus " + ex.Message);
         }
     }
 
