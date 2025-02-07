@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Thorfix;
@@ -282,18 +282,18 @@ public class Diff<T> where T : IEquatable<T>
         {
             if (i > 0 && j > 0 && _original[i - 1].Equals(_modified[j - 1]))
             {
-                changes.Insert(0, new Change(ChangeType.Unchanged, _original[i - 1].ToString()));
+                changes.Insert(0, new Change(ChangeType.Unchanged, _original[i - 1]?.ToString() ?? string.Empty));
                 i--;
                 j--;
             }
             else if (j > 0 && (i == 0 || matrix[i, j - 1] >= matrix[i - 1, j]))
             {
-                changes.Insert(0, new Change(ChangeType.Inserted, _modified[j - 1].ToString()));
+                changes.Insert(0, new Change(ChangeType.Inserted, _modified[j - 1]?.ToString() ?? string.Empty));
                 j--;
             }
             else if (i > 0 && (j == 0 || matrix[i, j - 1] < matrix[i - 1, j]))
             {
-                changes.Insert(0, new Change(ChangeType.Deleted, _original[i - 1].ToString()));
+                changes.Insert(0, new Change(ChangeType.Deleted, _original[i - 1]?.ToString() ?? string.Empty));
                 i--;
             }
         }
