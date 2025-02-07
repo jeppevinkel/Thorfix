@@ -181,6 +181,13 @@ public class Thorfix
                 StageChanges(repository);
                 var changes = repository.Diff.Compare<TreeChanges>();
                 
+                // print number of changes and changed files
+                Console.WriteLine($"Number of changes: {changes.Count()}");
+                foreach (TreeEntryChanges? change in changes)
+                {
+                    Console.WriteLine($"Changed file: {change.Path}");
+                }
+                
                 if (changes.Any())
                 {
                     // We have changes - let's verify them
@@ -193,6 +200,7 @@ public class Thorfix
                     messages.Add(verificationResponse.Message);
                     
                     var content = verificationResponse.Message.ToString();
+                    Console.WriteLine($"Verification result: {content}");
                     if (string.Equals(content?.Trim() ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
