@@ -168,13 +168,13 @@ public class Thorfix
         while (!isComplete)
         {
             res = await _claude.Messages.GetClaudeMessageAsync(parameters);
-            messages.Add(res.Message);
+            parameters.Messages.Add(res.Message);
 
             // Process tool calls
             foreach (Function? toolCall in res.ToolCalls)
             {
-                var response = await toolCall.InvokeAsync<string>();
-                messages.Add(new Message(toolCall, response));
+                var result = await toolCall.InvokeAsync<ToolResult>();
+                parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
             }
 
             if (res.ToolCalls?.Count == 0)
@@ -193,22 +193,20 @@ public class Thorfix
                 if (changes.Any())
                 {
                     // We have changes - let's verify them
-                    messages.Add(new Message(RoleType.User, 
+                    parameters.Messages.Add(new Message(RoleType.User, 
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
                         "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
                     
-                    var reviewParameters = new MessageParameters()
-                    {
-                        Messages = messages,
-                        MaxTokens = 4048,
-                        Model = AnthropicModels.Claude35Sonnet,
-                        Stream = false,
-                        Temperature = 1.0m,
-                    };
+                    var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
+                    parameters.Messages.Add(verificationResponse.Message);
                     
-                    var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(reviewParameters);
-                    messages.Add(verificationResponse.Message);
+                    // Process tool calls
+                    foreach (Function? toolCall in res.ToolCalls)
+                    {
+                        var result = await toolCall.InvokeAsync<ToolResult>();
+                        parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
+                    }
                     
                     var content = verificationResponse.Message.ToString();
                     Console.WriteLine($"Verification result: {content}");

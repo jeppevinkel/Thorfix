@@ -11,18 +11,18 @@ public class FileSystemTools
     }
 
     [Function("Reads a file from the filesystem")]
-    public async Task<string> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
+    public async Task<ToolResult> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
         filePath = GetFullPath(filePath);
         Console.WriteLine($"Read the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
-            return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
+            return new ToolResult($"Path was outside the allowed root directory ({RootDirectory.FullName})", true);
         }
 
         try
         {
-            return await File.ReadAllTextAsync(filePath);
+            return new (await File.ReadAllTextAsync(filePath));
         }
         catch (Exception e)
         {
@@ -32,42 +32,42 @@ public class FileSystemTools
                 message = message.Replace(RootDirectory.FullName, "");
             }
 
-            return $"Failed to read file: {message}";
+            return new ToolResult($"Failed to read file: {message}", true);
         }
     }
 
     [Function("List all files in the repository")]
-    public Task<string> ListFiles()
+    public Task<ToolResult> ListFiles()
     {
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories)
             .Select(it => it.Replace(RootDirectory.FullName, ""));
-        return Task.FromResult(string.Join("\n", files));
+        return Task.FromResult(new ToolResult(string.Join("\n", files)));
     }
 
     [Function("Write a file to the filesystem")]
-    public async Task<string> WriteFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The content to write to the file. This must be the entire content of the file and written exactly how the file is supposed to end up.", true)] string content)
+    public async Task<ToolResult> WriteFile([FunctionParameter("Path to the file", true)] string filePath, [FunctionParameter("The content to write to the file. This must be the entire content of the file and written exactly how the file is supposed to end up.", true)] string content)
     {
         filePath = GetFullPath(filePath);
         Console.WriteLine($"Write the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
-            return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
+            return new ToolResult($"Path was outside the allowed root directory ({RootDirectory.FullName})", true);
         }
 
         try
         {
             await File.WriteAllTextAsync(filePath, content);
-            return $"Successfully wrote {content.Length} bytes to {filePath}";
+            return new ToolResult($"Successfully wrote {content.Length} bytes to {filePath}");
         }
         catch (Exception e)
         {
             Console.WriteLine($"Error while writing {filePath}: {e.Message}");
-            return $"Error while writing {filePath}: {e.Message}";
+            return new ToolResult($"Error while writing {filePath}: {e.Message}", true);
         }
     }
 
     [Function("Apply a patch to a file in the repository")]
-    public async Task<string> ModifyFile([FunctionParameter("Path to the file", true)] string filePath,
+    public async Task<ToolResult> ModifyFile([FunctionParameter("Path to the file", true)] string filePath,
         [FunctionParameter(@"One or more SEARCH/REPLACE blocks following this exact format:
   ```
   <<<<<<< SEARCH
@@ -98,19 +98,19 @@ public class FileSystemTools
         Console.WriteLine($"Modify the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
-            return $"Path was outside the allowed root directory ({RootDirectory.FullName})";
+            return new ToolResult($"Path was outside the allowed root directory ({RootDirectory.FullName})");
         }
 
         try
         {
             await FileModifier.ModifyFile(filePath, diff);
 
-            return $"{filePath} modified successfully.";
+            return new ToolResult($"{filePath} modified successfully.");
         }
         catch (Exception e)
         {
             Console.WriteLine($"Error while modifying {filePath}: {e.Message}");
-            return $"Error while modifying {filePath}: {e.Message}";
+            return new ToolResult($"Error while modifying {filePath}: {e.Message}", true);
         }
     }
 
