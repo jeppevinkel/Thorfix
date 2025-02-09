@@ -21,7 +21,7 @@ public class GithubTools
     }
     
     [Function("Adds a comment to an issue")]
-    public async Task<string> IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
+    public async Task<ToolResult> IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
     {
         if (_issue is null)
         {
@@ -36,25 +36,25 @@ public class GithubTools
         {
             await _client.Issue.Comment.Create(_repoOwner, _repoName, _issue.Number,
                 $"[FROM THOR]\n\n{comment}");
-            return "Comment added successfully";
+            return new ToolResult("Comment added successfully");
         }
         catch (Exception e)
         {
-            return e.ToString();
+            return new ToolResult(e.ToString(), true);
         }
     }
 
     [Function("Converts the current issue into a pull request that targets the working branch")]
-    public async Task<string> ConvertIssueToPullRequest()
+    public async Task<ToolResult> ConvertIssueToPullRequest()
     {
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName, new NewPullRequest(_issue.Id, _branchName, "master"));
-            return "Converted the issue into a pull request";
+            return new ToolResult("Converted the issue into a pull request");
         }
         catch (Exception e)
         {
-            return e.ToString();
+            return new ToolResult(e.ToString(), true);
         }
     }
 }
