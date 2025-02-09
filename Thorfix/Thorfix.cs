@@ -176,16 +176,6 @@ public class Thorfix
                 var result = await toolCall.InvokeAsync<ToolResult>();
                 parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
             }
-            
-            // var finalResult = await _claude.Messages.GetClaudeMessageAsync(parameters);
-            // Console.WriteLine(finalResult.Message);
-            // parameters.Messages.Add(finalResult.Message);
-            var jsonStringBuilder = new StringBuilder();
-            jsonStringBuilder.AppendLine("[FROM THOR]");
-            jsonStringBuilder.AppendLine("```json");
-            jsonStringBuilder.AppendLine(System.Text.Json.JsonSerializer.Serialize(parameters.Messages));
-            jsonStringBuilder.AppendLine("```");
-            await githubTools.IssueAddComment(jsonStringBuilder.ToString());
 
             if (res.ToolCalls?.Count == 0)
             {
@@ -207,17 +197,12 @@ public class Thorfix
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
                         "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
-
-                    // foreach (Message message in parameters.Messages)
-                    // {
-                    //     Console.WriteLine($"{message}: {message.ToString()}");
-                    // }
                     
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     parameters.Messages.Add(verificationResponse.Message);
                     
                     // Process tool calls
-                    foreach (Function? toolCall in res.ToolCalls)
+                    foreach (Function? toolCall in verificationResponse.ToolCalls)
                     {
                         var result = await toolCall.InvokeAsync<ToolResult>();
                         parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
