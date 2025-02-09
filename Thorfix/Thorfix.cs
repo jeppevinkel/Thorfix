@@ -223,8 +223,6 @@ public class Thorfix
                     {
                         // Add a detailed comment explaining why the changes don't meet requirements
                         var commentBuilder = new StringBuilder();
-                        commentBuilder.AppendLine("[FROM THOR]");
-                        commentBuilder.AppendLine();
                         commentBuilder.AppendLine("⚠️ Code Review Results: Requirements Not Yet Met");
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("I've reviewed the current code changes against the original requirements:");
@@ -343,7 +341,7 @@ public class Thorfix
                 if (comment.Body.Contains("[FROM THOR]"))
                 {
                     // Remove the [FROM THOR] marker and add as assistant message
-                    sb.AppendLine("Assistant: " + comment.Body.Replace("[FROM THOR]", "").Trim());
+                    sb.AppendLine("Assistant: " + comment.Body.Replace("[FROM THOR]\n\n", "").Replace("[FROM THOR]", "").Trim());
                 }
                 else 
                 {
