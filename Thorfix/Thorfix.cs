@@ -222,8 +222,6 @@ public class Thorfix
                             
                             // Add build failure comment
                             var failureComment = new StringBuilder();
-                            failureComment.AppendLine("[FROM THOR]");
-                            failureComment.AppendLine();
                             failureComment.AppendLine("⚠️ Build Failure");
                             failureComment.AppendLine();
                             failureComment.AppendLine("The changes I made resulted in build failures:");
