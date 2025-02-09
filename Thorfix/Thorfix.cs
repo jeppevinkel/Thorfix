@@ -177,9 +177,15 @@ public class Thorfix
                 parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
             }
             
-            var finalResult = await _claude.Messages.GetClaudeMessageAsync(parameters);
-            Console.WriteLine(finalResult.Message);
-            parameters.Messages.Add(finalResult.Message);
+            // var finalResult = await _claude.Messages.GetClaudeMessageAsync(parameters);
+            // Console.WriteLine(finalResult.Message);
+            // parameters.Messages.Add(finalResult.Message);
+            var jsonStringBuilder = new StringBuilder();
+            jsonStringBuilder.AppendLine("[FROM THOR]");
+            jsonStringBuilder.AppendLine("```json");
+            jsonStringBuilder.AppendLine(System.Text.Json.JsonSerializer.Serialize(parameters.Messages));
+            jsonStringBuilder.AppendLine("```");
+            await githubTools.IssueAddComment(jsonStringBuilder.ToString());
 
             if (res.ToolCalls?.Count == 0)
             {
