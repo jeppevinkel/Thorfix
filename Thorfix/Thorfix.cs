@@ -207,9 +207,9 @@ public class Thorfix
                         parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
                     }
                     
-                    var content = verificationResponse.Message.ToString();
+                    var content = verificationResponse.Message.ToString()?.Trim();
                     Console.WriteLine($"Verification result: {content}");
-                    if (string.Equals(content?.Trim() ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(content ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: #{issue.Number}");
@@ -235,19 +235,22 @@ public class Thorfix
                         commentBuilder.AppendLine(feedbackContent);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Next Steps:**");
-                        commentBuilder.AppendLine("1. 🔄 Current changes will be reset");
-                        commentBuilder.AppendLine("2. ✍️ I will make additional modifications to address the gaps identified above");
-                        commentBuilder.AppendLine("3. 🔍 Changes will be re-evaluated against requirements");
+                        commentBuilder.AppendLine("1. ✍️ I will make additional modifications to address the gaps identified above");
+                        commentBuilder.AppendLine("2. 🔍 Changes will be re-evaluated against requirements");
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("I'll continue iterating until all requirements are met.");
                         
                         await githubTools.IssueAddComment(commentBuilder.ToString());
                         
+                        parameters.Messages.Add(new Message(RoleType.User, "Continue iterating until all requirements are met."));
+                        
                         // Reset the changes since we're not done
-                        repository.Reset(ResetMode.Hard);
+                        // repository.Reset(ResetMode.Hard);
                     }
                 }
             }
+
+            await Task.Delay(TimeSpan.FromSeconds(10));
         }
     }
 
