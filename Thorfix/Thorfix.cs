@@ -197,6 +197,11 @@ public class Thorfix
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
                         "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
+
+                    foreach (Message message in parameters.Messages)
+                    {
+                        Console.WriteLine($"{message.Role}: {message.ToString()}");
+                    }
                     
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     parameters.Messages.Add(verificationResponse.Message);
