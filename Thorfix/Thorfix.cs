@@ -176,6 +176,10 @@ public class Thorfix
                 var result = await toolCall.InvokeAsync<ToolResult>();
                 parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
             }
+            
+            var finalResult = await _claude.Messages.GetClaudeMessageAsync(parameters);
+            Console.WriteLine(finalResult.Message);
+            parameters.Messages.Add(finalResult.Message);
 
             if (res.ToolCalls?.Count == 0)
             {
@@ -198,10 +202,10 @@ public class Thorfix
                         "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
 
-                    foreach (Message message in parameters.Messages)
-                    {
-                        Console.WriteLine($"{message.Role}: {message.ToString()}");
-                    }
+                    // foreach (Message message in parameters.Messages)
+                    // {
+                    //     Console.WriteLine($"{message}: {message.ToString()}");
+                    // }
                     
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
                     parameters.Messages.Add(verificationResponse.Message);
