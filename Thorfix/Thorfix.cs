@@ -105,7 +105,6 @@ public class Thorfix
         if (trackingBranch is not null)
         {
             Console.WriteLine(trackingBranch.FriendlyName);
-            Console.WriteLine(trackingBranch.CanonicalName);
             
             branchName = $"thorfix/{issue.Number}-{trackingBranch.FriendlyName.Replace("origin/", "")}";
 
