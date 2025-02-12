@@ -73,6 +73,7 @@ public class Thorfix
                         {
                             Directory.Delete($"/app/repository/{_repoName}", true);
                         }
+
                         await HandleIssue(issue);
                     }
                     catch (Exception ex)
@@ -110,7 +111,7 @@ public class Thorfix
         if (trackingBranch is not null)
         {
             Console.WriteLine(trackingBranch.FriendlyName);
-            
+
             branchName = $"thorfix/{issue.Number}-{trackingBranch.FriendlyName.Replace("origin/", "")}";
 
             thorfixBranch = repository.Head;
@@ -145,7 +146,8 @@ public class Thorfix
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
-        GithubTools githubTools = new GithubTools(_github, issue, repository, thorfixBranch, _usernamePasswordCredentials, branchName, _repoOwner, _repoName);
+        GithubTools githubTools = new GithubTools(_github, issue, repository, thorfixBranch,
+            _usernamePasswordCredentials, branchName, _repoOwner, _repoName);
 
         var tools = new List<Tool>
         {
@@ -171,7 +173,7 @@ public class Thorfix
         MessageResponse? res;
         bool isComplete = false;
         int iterations = 0;
-        
+
         while (!isComplete || iterations++ > 10)
         {
             res = await GetClaudeMessageAsync(parameters);
@@ -189,7 +191,7 @@ public class Thorfix
                 // No more tool calls - let's check if the changes satisfy the requirements
                 var changes = repository.Diff.Compare<TreeChanges>();
                 StageChanges(repository);
-                
+
                 // print number of changes and changed files
                 Console.WriteLine($"Number of changes: {changes.Count()}");
                 foreach (TreeEntryChanges? change in changes)
@@ -229,7 +231,7 @@ public class Thorfix
                             Console.WriteLine($"Build errors: {error}");
 
                             var outputText = !string.IsNullOrWhiteSpace(error) ? error : output;
-                            
+
                             // Add build failure comment
                             var failureComment = new StringBuilder();
                             failureComment.AppendLine("⚠️ Build Failure");
@@ -241,18 +243,18 @@ public class Thorfix
                             failureComment.AppendLine("```");
                             failureComment.AppendLine();
                             failureComment.AppendLine("I'll review and fix these build errors before proceeding.");
-                            
+
                             await githubTools.IssueAddComment(failureComment.ToString());
-                            
+
                             // We have changes - let's verify them
-                            parameters.Messages.Add(new Message(RoleType.User, 
+                            parameters.Messages.Add(new Message(RoleType.User,
                                 $"The build failed with the following output: {outputText}"));
-                            
+
                             // Reset changes and continue the loop
                             // repository.Reset(ResetMode.Hard);
                             continue;
                         }
-                        
+
                         Console.WriteLine("Build successful!");
                     }
                     catch (Exception ex)
@@ -261,25 +263,25 @@ public class Thorfix
                         throw;
                     }
                 }
-                
+
                 if (changes.Any())
                 {
                     // We have changes - let's verify them
-                    parameters.Messages.Add(new Message(RoleType.User, 
+                    parameters.Messages.Add(new Message(RoleType.User,
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
                         "If they do, respond with just '[COMPLETE]'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
-                    
+
                     var verificationResponse = await GetClaudeMessageAsync(parameters);
                     parameters.Messages.Add(verificationResponse.Message);
-                    
+
                     // Process tool calls
                     foreach (Function? toolCall in verificationResponse.ToolCalls)
                     {
                         var result = await toolCall.InvokeAsync<ToolResult>();
                         parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
                     }
-                    
+
                     var content = verificationResponse.Message.ToString()?.Trim();
                     Console.WriteLine($"Verification result: {content}");
                     if (content != null && content.Contains("[COMPLETE]", StringComparison.OrdinalIgnoreCase))
@@ -287,10 +289,11 @@ public class Thorfix
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: #{issue.Number}");
                         PushChanges(repository, thorfixBranch);
-                        
+
                         // Convert to pull request since we're done
                         await githubTools.ConvertIssueToPullRequest();
-                        await githubTools.IssueAddComment("Changes have been completed and a pull request has been created.");
+                        await githubTools.IssueAddComment(
+                            "Changes have been completed and a pull request has been created.");
                     }
                     else
                     {
@@ -298,7 +301,8 @@ public class Thorfix
                         var commentBuilder = new StringBuilder();
                         commentBuilder.AppendLine("⚠️ Code Review Results: Requirements Not Yet Met");
                         commentBuilder.AppendLine();
-                        commentBuilder.AppendLine("I've reviewed the current code changes against the original requirements:");
+                        commentBuilder.AppendLine(
+                            "I've reviewed the current code changes against the original requirements:");
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Original Requirements:**");
                         commentBuilder.AppendLine(issue.Body);
@@ -308,20 +312,22 @@ public class Thorfix
                         commentBuilder.AppendLine(feedbackContent);
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("**Next Steps:**");
-                        commentBuilder.AppendLine("1. ✍️ I will make additional modifications to address the gaps identified above");
+                        commentBuilder.AppendLine(
+                            "1. ✍️ I will make additional modifications to address the gaps identified above");
                         commentBuilder.AppendLine("2. 🔍 Changes will be re-evaluated against requirements");
                         commentBuilder.AppendLine();
                         commentBuilder.AppendLine("I'll continue iterating until all requirements are met.");
-                        
+
                         await githubTools.IssueAddComment(commentBuilder.ToString());
-                        
+
                         // Reset the changes since we're not done
                         // repository.Reset(ResetMode.Hard);
                     }
                 }
             }
-            
-            parameters.Messages.Add(new Message(RoleType.User, "All requirements were not yet met. Continue working on the code."));
+
+            parameters.Messages.Add(new Message(RoleType.User,
+                "All requirements were not yet met. Continue working on the code."));
 
             await Task.Delay(TimeSpan.FromSeconds(10));
         }
@@ -420,7 +426,7 @@ public class Thorfix
         sb.AppendLine("You are a software development bot. Your task is to fix the following issue:");
         sb.AppendLine($"Issue Title: {issue.Title}");
         sb.AppendLine($"Issue Description: {issue.Body}");
-        
+
         // Get all comments on the issue
         var comments = await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number);
         if (comments.Any())
@@ -431,17 +437,20 @@ public class Thorfix
                 if (comment.Body.Contains("[FROM THOR]"))
                 {
                     // Remove the [FROM THOR] marker and add as assistant message
-                    sb.AppendLine("Assistant: " + comment.Body.Replace("[FROM THOR]\n\n", "").Replace("[FROM THOR]", "").Trim());
+                    sb.AppendLine("Assistant: " +
+                                  comment.Body.Replace("[FROM THOR]\n\n", "").Replace("[FROM THOR]", "").Trim());
                 }
-                else 
+                else
                 {
                     sb.AppendLine("User: " + comment.Body.Trim());
                 }
+
                 sb.AppendLine(); // Add blank line between messages
             }
         }
 
-        sb.AppendLine("\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
+        sb.AppendLine(
+            "\nUse any tools at your disposal to solve the issue. Your task will be considered finished when you no longer make any tool calls.");
         sb.AppendLine(@"The tool to modify files uses patches to define the modifications.
 The format of the patches is as following:
 @@ -1,6 +1,7 @@
@@ -490,7 +499,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
         return branchName.Replace(' ', '-');
     }
-    
+
     private string RemoveEmptyLines(string lines)
     {
         return Regex.Replace(lines, @"^\s*$\n|\r", string.Empty, RegexOptions.Multiline).TrimEnd();

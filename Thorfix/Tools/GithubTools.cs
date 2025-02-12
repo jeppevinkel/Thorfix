@@ -17,8 +17,9 @@ public class GithubTools
     private readonly string _repoOwner;
     private readonly string _repoName;
     private readonly string _branchName;
-    
-    public GithubTools(GitHubClient client, Issue issue, Repository repository, Branch? branch, UsernamePasswordCredentials credentials, string branchName, string repoOwner, string repoName)
+
+    public GithubTools(GitHubClient client, Issue issue, Repository repository, Branch? branch,
+        UsernamePasswordCredentials credentials, string branchName, string repoOwner, string repoName)
     {
         _client = client;
         _issue = issue;
@@ -29,15 +30,17 @@ public class GithubTools
         _repoName = repoName;
         _branchName = branchName;
     }
-    
+
     [Function("Adds a comment to an issue")]
-    public async Task<ToolResult> IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
+    public async Task<ToolResult> IssueAddComment(
+        [FunctionParameter("The markdown comment to add", true)] string comment)
     {
         Console.WriteLine("Add comment to issue");
         if (_issue is null)
         {
             throw new NullReferenceException("Issue is null for some reason");
         }
+
         if (_client is null)
         {
             throw new NullReferenceException("Github client is null for some reason");
@@ -61,7 +64,8 @@ public class GithubTools
         Console.WriteLine("Convert issue to pull request");
         try
         {
-            PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName, new NewPullRequest(_issue.Id, _branchName, "master"));
+            PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
+                new NewPullRequest(_issue.Id, _branchName, "master"));
             return new ToolResult("Converted the issue into a pull request");
         }
         catch (Exception e)
@@ -69,7 +73,7 @@ public class GithubTools
             return new ToolResult(e.ToString(), true);
         }
     }
-    
+
     [Function("Commits changes to the repository")]
     public Task<ToolResult> CommitChanges([FunctionParameter("The commit message", true)] string commitMessage)
     {
@@ -79,7 +83,7 @@ public class GithubTools
             commitMessage += $"\n#{_issue.Number}";
             _repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
                 new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
-            
+
             PushChanges(_repository, _branch);
 
             return Task.FromResult(new ToolResult("Commited changes successfully"));
@@ -87,11 +91,11 @@ public class GithubTools
         catch (Exception e)
         {
             Console.WriteLine("Exception:RepoActions:CommitChanges " + e.Message);
-            
+
             return Task.FromResult(new ToolResult(e.ToString(), true));
         }
     }
-    
+
     public void PushChanges(Repository repository, Branch? branch = null)
     {
         try
