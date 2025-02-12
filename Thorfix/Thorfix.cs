@@ -163,8 +163,9 @@ public class Thorfix
 
         MessageResponse? res;
         bool isComplete = false;
+        int iterations = 0;
         
-        while (!isComplete)
+        while (!isComplete || iterations++ > 10)
         {
             res = await _claude.Messages.GetClaudeMessageAsync(parameters);
             parameters.Messages.Add(res.Message);
@@ -210,15 +211,17 @@ public class Thorfix
                         };
 
                         buildProcess.Start();
-                        string output = buildProcess.StandardOutput.ReadToEnd();
-                        string error = buildProcess.StandardError.ReadToEnd();
-                        buildProcess.WaitForExit();
+                        var output = await buildProcess.StandardOutput.ReadToEndAsync();
+                        var error = await buildProcess.StandardError.ReadToEndAsync();
+                        await buildProcess.WaitForExitAsync();
 
                         if (buildProcess.ExitCode != 0)
                         {
                             Console.WriteLine("Build failed!");
                             Console.WriteLine($"Build output: {output}");
                             Console.WriteLine($"Build errors: {error}");
+
+                            var outputText = !string.IsNullOrWhiteSpace(error) ? error : output;
                             
                             // Add build failure comment
                             var failureComment = new StringBuilder();
@@ -227,15 +230,19 @@ public class Thorfix
                             failureComment.AppendLine("The changes I made resulted in build failures:");
                             failureComment.AppendLine();
                             failureComment.AppendLine("```");
-                            failureComment.AppendLine(error);
+                            failureComment.AppendLine(outputText);
                             failureComment.AppendLine("```");
                             failureComment.AppendLine();
                             failureComment.AppendLine("I'll review and fix these build errors before proceeding.");
                             
                             await githubTools.IssueAddComment(failureComment.ToString());
                             
+                            // We have changes - let's verify them
+                            parameters.Messages.Add(new Message(RoleType.User, 
+                                $"The build failed with the following output: {outputText}"));
+                            
                             // Reset changes and continue the loop
-                            repository.Reset(ResetMode.Hard);
+                            // repository.Reset(ResetMode.Hard);
                             continue;
                         }
                         
@@ -253,7 +260,7 @@ public class Thorfix
                     // We have changes - let's verify them
                     parameters.Messages.Add(new Message(RoleType.User, 
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
-                        "If they do, respond with just 'COMPLETE'. If not, continue making necessary changes. " +
+                        "If they do, respond with just '[COMPLETE]'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
                     
                     var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
@@ -268,7 +275,7 @@ public class Thorfix
                     
                     var content = verificationResponse.Message.ToString()?.Trim();
                     Console.WriteLine($"Verification result: {content}");
-                    if (string.Equals(content ?? "", "COMPLETE", StringComparison.OrdinalIgnoreCase))
+                    if (content != null && content.Contains("[COMPLETE]", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: #{issue.Number}");
@@ -301,13 +308,13 @@ public class Thorfix
                         
                         await githubTools.IssueAddComment(commentBuilder.ToString());
                         
-                        parameters.Messages.Add(new Message(RoleType.User, "Continue iterating until all requirements are met."));
-                        
                         // Reset the changes since we're not done
                         // repository.Reset(ResetMode.Hard);
                     }
                 }
             }
+            
+            parameters.Messages.Add(new Message(RoleType.User, "All requirements were not yet met. Continue working on the code."));
 
             await Task.Delay(TimeSpan.FromSeconds(10));
         }
