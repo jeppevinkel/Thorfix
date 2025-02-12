@@ -33,6 +33,7 @@ public class GithubTools
     [Function("Adds a comment to an issue")]
     public async Task<ToolResult> IssueAddComment([FunctionParameter("The markdown comment to add", true)] string comment)
     {
+        Console.WriteLine("Add comment to issue");
         if (_issue is null)
         {
             throw new NullReferenceException("Issue is null for some reason");
