@@ -56,6 +56,11 @@ public class FileSystemTools
 
         try
         {
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
             await File.WriteAllTextAsync(filePath, content);
             return new ToolResult($"Successfully wrote {content.Length} bytes to {filePath}");
         }
