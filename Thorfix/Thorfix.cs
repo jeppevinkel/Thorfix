@@ -335,16 +335,26 @@ public class Thorfix
 
     private async Task<MessageResponse> GetClaudeMessageAsync(MessageParameters parameters)
     {
-        try
+        var triesLeft = 3;
+        while (triesLeft-- > 0)
         {
-            return await _claude.Messages.GetClaudeMessageAsync(parameters);
+            try
+            {
+                return await _claude.Messages.GetClaudeMessageAsync(parameters);
+            }
+            catch (HttpRequestException requestException)
+            {
+                if ((int) requestException.StatusCode! != (int) AnthropicErrorCode.OverloadedError) throw;
+                if (triesLeft <= 0)
+                {
+                    throw;
+                }
+                await Task.Delay(TimeSpan.FromSeconds(1));
+                return await _claude.Messages.GetClaudeMessageAsync(parameters);
+            }
         }
-        catch (HttpRequestException requestException)
-        {
-            if ((int) requestException.StatusCode! != (int) AnthropicErrorCode.OverloadedError) throw;
-            await Task.Delay(TimeSpan.FromSeconds(1));
-            return await _claude.Messages.GetClaudeMessageAsync(parameters);
-        }
+
+        throw new Exception("Failed to get Claude message after 3 tries");
     }
 
     public void StageChanges(Repository repository)
