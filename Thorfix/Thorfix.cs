@@ -190,7 +190,6 @@ public class Thorfix
             {
                 // No more tool calls - let's check if the changes satisfy the requirements
                 var changes = repository.Diff.Compare<TreeChanges>();
-                GithubTools.StageChanges(repository);
 
                 // print number of changes and changed files
                 Console.WriteLine($"Number of changes: {changes.Count()}");
@@ -264,8 +263,8 @@ public class Thorfix
                     }
                 }
 
-                if (changes.Any())
-                {
+                // if (changes.Any())
+                // {
                     // We have changes - let's verify them
                     parameters.Messages.Add(new Message(RoleType.User,
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
@@ -287,13 +286,17 @@ public class Thorfix
                     if (content != null && content.Contains("[COMPLETE]", StringComparison.OrdinalIgnoreCase))
                     {
                         isComplete = true;
-                        CommitChanges(repository, $"Thorfix: #{issue.Number}");
-                        GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
+                        if (changes.Any())
+                        {
+                            GithubTools.StageChanges(repository);
+                            CommitChanges(repository, $"Thorfix: #{issue.Number}");
+                            GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
+                        }
 
                         // Convert to pull request since we're done
                         await githubTools.ConvertIssueToPullRequest();
                         await githubTools.IssueAddComment(
-                            "Changes have been completed and a pull request has been created.");
+                            "Changes have been completed.");
                     }
                     else
                     {
@@ -319,14 +322,14 @@ public class Thorfix
                         commentBuilder.AppendLine("I'll continue iterating until all requirements are met.");
 
                         await githubTools.IssueAddComment(commentBuilder.ToString());
+                        
+                        parameters.Messages.Add(new Message(RoleType.User,
+                            "All requirements were not yet met. Continue working on the code."));
 
                         // Reset the changes since we're not done
                         // repository.Reset(ResetMode.Hard);
                     }
-                }
-
-                parameters.Messages.Add(new Message(RoleType.User,
-                    "All requirements were not yet met. Continue working on the code."));
+                // }
             }
 
             await Task.Delay(TimeSpan.FromSeconds(3));
