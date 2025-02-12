@@ -160,7 +160,8 @@ public class Thorfix
             Model = AnthropicModels.Claude35Sonnet,
             Stream = false,
             Temperature = 1.0m,
-            Tools = tools
+            Tools = tools,
+            PromptCaching = PromptCacheType.Messages | PromptCacheType.Tools
         };
 
         MessageResponse? res;
