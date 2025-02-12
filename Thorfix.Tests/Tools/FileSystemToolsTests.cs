@@ -17,7 +17,7 @@ public class FileSystemToolsTests
             Directory.Delete(_testDirectory, true);
         }
         Directory.CreateDirectory(_testDirectory);
-        _fileSystemTools = new FileSystemTools();
+        _fileSystemTools = new FileSystemTools(_testDirectory);
     }
 
     [TestCleanup]

@@ -31,9 +31,36 @@ public class GithubToolsTests
         _mockCommentsClient = new Mock<IIssueCommentsClient>();
         _mockPullRequestsClient = new Mock<IPullRequestsClient>();
 
-        _mockGithubClient.Setup(x => x.Issue).Returns(new Mock<IIssuesClient>().Object);
-        _mockGithubClient.Setup(x => x.Issue.Comment).Returns(_mockCommentsClient.Object);
+        _mockGithubClient.Setup(x => x.Issue).Returns(_mockIssuesClient.Object);
+        _mockIssuesClient.Setup(x => x.Comment).Returns(_mockCommentsClient.Object);
         _mockGithubClient.Setup(x => x.PullRequest).Returns(_mockPullRequestsClient.Object);
+
+        // Setup test issue
+        _testIssue = new Issue(
+            id: 1,
+            nodeId: "test-node",
+            url: "https://api.github.com/repos/test/test/issues/1",
+            htmlUrl: "https://github.com/test/test/issues/1",
+            commentsUrl: "https://api.github.com/repos/test/test/issues/1/comments",
+            eventsUrl: "https://api.github.com/repos/test/test/issues/1/events",
+            number: 1,
+            state: ItemState.Open,
+            title: "Test Issue",
+            body: "Test body",
+            closedBy: null,
+            user: new User(),
+            labels: new List<Label>(),
+            assignee: null,
+            assignees: new List<User>(),
+            milestone: null,
+            comments: 0,
+            pullRequest: null,
+            closedAt: null,
+            createdAt: DateTimeOffset.Now,
+            updatedAt: DateTimeOffset.Now,
+            repository: null,
+            locked: false,
+            activeLockReason: null);
 
         // Setup repository mock
         _mockRepository = new Mock<Repository>();

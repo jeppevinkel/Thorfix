@@ -4,7 +4,12 @@ namespace Thorfix.Tools;
 
 public class FileSystemTools
 {
-    private static readonly DirectoryInfo RootDirectory = new DirectoryInfo("/app/repository");
+    private readonly DirectoryInfo _rootDirectory;
+
+    public FileSystemTools(string? rootDirectory = null)
+    {
+        _rootDirectory = new DirectoryInfo(rootDirectory ?? "/app/repository");
+    }
 
     public FileSystemTools()
     {
@@ -17,7 +22,7 @@ public class FileSystemTools
         Console.WriteLine($"Read the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
-            return new ToolResult($"Path was outside the allowed root directory ({RootDirectory.FullName})", true);
+            return new ToolResult($"Path was outside the allowed root directory ({_rootDirectory.FullName})", true);
         }
 
         try
@@ -39,8 +44,8 @@ public class FileSystemTools
     [Function("List all files in the repository")]
     public Task<ToolResult> ListFiles()
     {
-        var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories)
-            .Select(it => it.Replace(RootDirectory.FullName, ""));
+        var files = Directory.GetFiles(_rootDirectory.FullName, "*", SearchOption.AllDirectories)
+            .Select(it => it.Replace(_rootDirectory.FullName, ""));
         return Task.FromResult(new ToolResult(string.Join("\n", files)));
     }
 
@@ -51,7 +56,7 @@ public class FileSystemTools
         Console.WriteLine($"Write the contents of {filePath}");
         if (!IsPathAllowed(filePath))
         {
-            return new ToolResult($"Path was outside the allowed root directory ({RootDirectory.FullName})", true);
+            return new ToolResult($"Path was outside the allowed root directory ({_rootDirectory.FullName})", true);
         }
 
         try
@@ -119,20 +124,20 @@ public class FileSystemTools
         }
     }
 
-    private static bool IsPathAllowed(string filePath)
+    private bool IsPathAllowed(string filePath)
     {
         var directoryInfo = new DirectoryInfo(filePath);
 
-        return directoryInfo.FullName.StartsWith(RootDirectory.FullName);
+        return directoryInfo.FullName.StartsWith(_rootDirectory.FullName);
     }
 
-    private static string GetFullPath(string filePath)
+    private string GetFullPath(string filePath)
     {
         if (filePath.StartsWith('\\') || filePath.StartsWith('/'))
         {
             filePath = filePath[1..];
         }
 
-        return Path.Combine(RootDirectory.FullName, filePath);
+        return Path.Combine(_rootDirectory.FullName, filePath);
     }
 }

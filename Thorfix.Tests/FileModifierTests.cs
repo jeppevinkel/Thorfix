@@ -137,8 +137,7 @@ Modified Line
         await File.WriteAllTextAsync(_testFilePath, originalContent);
 
         const string diff = @"<<<<<<< SEARCH
-Line 2
-Line 3
+Line 2\nLine 3
 =======
 Modified Lines
 >>>>>>> REPLACE";
