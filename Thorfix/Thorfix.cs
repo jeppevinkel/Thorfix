@@ -324,12 +324,12 @@ public class Thorfix
                         // repository.Reset(ResetMode.Hard);
                     }
                 }
+
+                parameters.Messages.Add(new Message(RoleType.User,
+                    "All requirements were not yet met. Continue working on the code."));
             }
 
-            parameters.Messages.Add(new Message(RoleType.User,
-                "All requirements were not yet met. Continue working on the code."));
-
-            await Task.Delay(TimeSpan.FromSeconds(10));
+            await Task.Delay(TimeSpan.FromSeconds(1));
         }
     }
 
