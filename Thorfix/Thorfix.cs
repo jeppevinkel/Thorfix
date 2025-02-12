@@ -329,7 +329,7 @@ public class Thorfix
                     "All requirements were not yet met. Continue working on the code."));
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
+            await Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
 
