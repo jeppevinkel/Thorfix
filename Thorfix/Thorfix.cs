@@ -69,6 +69,10 @@ public class Thorfix
                     Console.WriteLine($"Processing #{issue.Number}");
                     try
                     {
+                        if (Directory.Exists($"/app/repository/{_repoName}"))
+                        {
+                            Directory.Delete($"/app/repository/{_repoName}", true);
+                        }
                         await HandleIssue(issue);
                     }
                     catch (Exception ex)
