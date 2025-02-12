@@ -2,7 +2,10 @@ using LibGit2Sharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Octokit;
+using Thorfix.Tools;
 using Branch = LibGit2Sharp.Branch;
+using Commit = LibGit2Sharp.Commit;
+using Index = LibGit2Sharp.Index;
 using Repository = LibGit2Sharp.Repository;
 using Signature = LibGit2Sharp.Signature;
 
@@ -37,26 +40,28 @@ public class GithubToolsTests
 
         // Create test issue
         _testIssue = new Issue(
-            id: 1,
-            nodeId: "test-node",
-            url: "https://api.github.com/repos/test/test/issues/1",
-            htmlUrl: "https://github.com/test/test/issues/1",
-            number: 1,
-            state: ItemState.Open,
-            title: "Test Issue",
-            body: "Test body",
-            closedBy: null,
-            user: new User(),
-            labels: new List<Label>(),
-            assignee: null,
-            assignees = new List<User>(),
-            milestone = null,
-            comments = 0,
-            pullRequest = null,
-            closedAt = null,
-            createdAt = DateTimeOffset.Now,
-            updatedAt = DateTimeOffset.Now,
-            repository = null);
+            // id: 1,
+            // nodeId: "test-node",
+            // url: "https://api.github.com/repos/test/test/issues/1",
+            // htmlUrl: "https://github.com/test/test/issues/1",
+            // eventsUrl: "https://github.com/test/test/issues/1",
+            // number: 1,
+            // state: ItemState.Open,
+            // title: "Test Issue",
+            // body: "Test body",
+            // closedBy: null,
+            // user: new User(),
+            // labels: new List<Label>(),
+            // assignee: null,
+            // assignees: new List<User>(),
+            // milestone: null,
+            // comments: 0,
+            // pullRequest: null,
+            // closedAt: null,
+            // createdAt: DateTimeOffset.Now,
+            // updatedAt: DateTimeOffset.Now,
+            // repository: null
+            );
 
         // Create test credentials
         var credentials = new UsernamePasswordCredentials
@@ -92,7 +97,7 @@ public class GithubToolsTests
 
         // Assert
         Assert.IsFalse(result.IsError);
-        Assert.AreEqual("Comment added successfully", result.Result);
+        Assert.AreEqual("Comment added successfully", result.Response);
         _mockCommentsClient.Verify(
             x => x.Create("test-owner", "test-repo", 1, $"[FROM THOR]\n\n{comment}"),
             Times.Once);
@@ -112,7 +117,7 @@ public class GithubToolsTests
 
         // Assert
         Assert.IsTrue(result.IsError);
-        Assert.IsTrue(result.Result.Contains("API Error"));
+        Assert.IsTrue(result.Response.Contains("API Error"));
     }
 
     [TestMethod]
@@ -128,7 +133,7 @@ public class GithubToolsTests
 
         // Assert
         Assert.IsFalse(result.IsError);
-        Assert.AreEqual("Converted the issue into a pull request", result.Result);
+        Assert.AreEqual("Converted the issue into a pull request", result.Response);
         _mockPullRequestsClient.Verify(
             x => x.Create("test-owner", "test-repo", 
                 It.Is<NewPullRequest>(pr => 
@@ -151,7 +156,7 @@ public class GithubToolsTests
 
         // Assert
         Assert.IsTrue(result.IsError);
-        Assert.IsTrue(result.Result.Contains("API Error"));
+        Assert.IsTrue(result.Response.Contains("API Error"));
     }
 
     [TestMethod]
@@ -170,7 +175,7 @@ public class GithubToolsTests
 
         // Assert
         Assert.IsFalse(result.IsError);
-        Assert.AreEqual("Commited changes successfully", result.Result);
+        Assert.AreEqual("Commited changes successfully", result.Response);
         _mockRepository.Verify(x => x.Commit(
             $"{commitMessage}\n#1",
             It.Is<Signature>(s => s.Name == "Thorfix" && s.Email == "thorfix@jeppdev.com"),
@@ -194,7 +199,7 @@ public class GithubToolsTests
 
         // Assert
         Assert.IsTrue(result.IsError);
-        Assert.IsTrue(result.Result.Contains("Git error"));
+        Assert.IsTrue(result.Response.Contains("Git error"));
     }
 
     [TestMethod]

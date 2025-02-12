@@ -42,7 +42,7 @@ public class FileSystemToolsTests
 
         // Assert
         Assert.IsFalse(result.IsError);
-        Assert.AreEqual(expectedContent, result.Result);
+        Assert.AreEqual(expectedContent, result.Response);
     }
 
     [TestMethod]
@@ -56,7 +56,7 @@ public class FileSystemToolsTests
 
         // Assert
         Assert.IsTrue(result.IsError);
-        Assert.IsTrue(result.Result.Contains("Failed to read file"));
+        Assert.IsTrue(result.Response.Contains("Failed to read file"));
     }
 
     [TestMethod]
@@ -114,7 +114,7 @@ public class FileSystemToolsTests
         Assert.IsFalse(result.IsError);
         foreach (var file in testFiles)
         {
-            Assert.IsTrue(result.Result.Contains(Path.GetFileName(file)));
+            Assert.IsTrue(result.Response.Contains(Path.GetFileName(file)));
         }
     }
 
@@ -150,6 +150,6 @@ Modified Line 2
         var path = Path.Combine(Path.GetTempPath(), "outside.txt");
         var result = _fileSystemTools.ReadFile(path).Result;
         Assert.IsTrue(result.IsError);
-        Assert.IsTrue(result.Result.Contains("outside the allowed root directory"));
+        Assert.IsTrue(result.Response.Contains("outside the allowed root directory"));
     }
 }
