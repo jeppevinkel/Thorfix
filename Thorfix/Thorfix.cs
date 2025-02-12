@@ -141,7 +141,7 @@ public class Thorfix
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
-        GithubTools githubTools = new GithubTools(_github, issue, branchName, _repoOwner, _repoName);
+        GithubTools githubTools = new GithubTools(_github, issue, repository, thorfixBranch, _usernamePasswordCredentials, branchName, _repoOwner, _repoName);
 
         var tools = new List<Tool>
         {
@@ -150,6 +150,7 @@ public class Thorfix
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.WriteFile)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ModifyFile)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
+            Tool.GetOrCreateTool(githubTools, nameof(GithubTools.CommitChanges)),
         };
 
         var parameters = new MessageParameters()

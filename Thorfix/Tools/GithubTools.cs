@@ -1,5 +1,9 @@
 ﻿using Anthropic.SDK.Common;
+using LibGit2Sharp;
 using Octokit;
+using Branch = LibGit2Sharp.Branch;
+using Repository = LibGit2Sharp.Repository;
+using Signature = LibGit2Sharp.Signature;
 
 namespace Thorfix.Tools;
 
@@ -7,14 +11,20 @@ public class GithubTools
 {
     private readonly GitHubClient _client;
     private readonly Issue _issue;
+    private readonly Repository _repository;
+    private readonly Branch? _branch;
+    private readonly UsernamePasswordCredentials _credentials;
     private readonly string _repoOwner;
     private readonly string _repoName;
     private readonly string _branchName;
     
-    public GithubTools(GitHubClient client, Issue issue, string branchName, string repoOwner, string repoName)
+    public GithubTools(GitHubClient client, Issue issue, Repository repository, Branch? branch, UsernamePasswordCredentials credentials, string branchName, string repoOwner, string repoName)
     {
         _client = client;
         _issue = issue;
+        _repository = repository;
+        _branch = branch;
+        _credentials = credentials;
         _repoOwner = repoOwner;
         _repoName = repoName;
         _branchName = branchName;
@@ -55,6 +65,43 @@ public class GithubTools
         catch (Exception e)
         {
             return new ToolResult(e.ToString(), true);
+        }
+    }
+    
+    [Function("Commits changes to the repository")]
+    public Task<ToolResult> CommitChanges([FunctionParameter("The commit message", true)] string commitMessage)
+    {
+        try
+        {
+            commitMessage += $"\n#{_issue.Number}";
+            _repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
+                new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
+            
+            PushChanges(_repository, _branch);
+
+            return Task.FromResult(new ToolResult("Commited changes successfully"));
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Exception:RepoActions:CommitChanges " + e.Message);
+            
+            return Task.FromResult(new ToolResult(e.ToString(), true));
+        }
+    }
+    
+    public void PushChanges(Repository repository, Branch? branch = null)
+    {
+        try
+        {
+            var pushOptions = new PushOptions
+            {
+                CredentialsProvider = (_, _, _) => _credentials
+            };
+            repository.Network.Push(branch ?? repository.Head, pushOptions);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
         }
     }
 }
