@@ -57,6 +57,7 @@ public class GithubTools
     [Function("Converts the current issue into a pull request that targets the working branch")]
     public async Task<ToolResult> ConvertIssueToPullRequest()
     {
+        Console.WriteLine("Convert issue to pull request");
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName, new NewPullRequest(_issue.Id, _branchName, "master"));
@@ -71,6 +72,7 @@ public class GithubTools
     [Function("Commits changes to the repository")]
     public Task<ToolResult> CommitChanges([FunctionParameter("The commit message", true)] string commitMessage)
     {
+        Console.WriteLine($"Create commit {commitMessage}");
         try
         {
             commitMessage += $"\n#{_issue.Number}";
