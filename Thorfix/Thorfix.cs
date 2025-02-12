@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Anthropic.SDK;
@@ -167,7 +168,7 @@ public class Thorfix
         
         while (!isComplete || iterations++ > 10)
         {
-            res = await _claude.Messages.GetClaudeMessageAsync(parameters);
+            res = await GetClaudeMessageAsync(parameters);
             parameters.Messages.Add(res.Message);
 
             // Process tool calls
@@ -263,7 +264,7 @@ public class Thorfix
                         "If they do, respond with just '[COMPLETE]'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
                     
-                    var verificationResponse = await _claude.Messages.GetClaudeMessageAsync(parameters);
+                    var verificationResponse = await GetClaudeMessageAsync(parameters);
                     parameters.Messages.Add(verificationResponse.Message);
                     
                     // Process tool calls
@@ -317,6 +318,20 @@ public class Thorfix
             parameters.Messages.Add(new Message(RoleType.User, "All requirements were not yet met. Continue working on the code."));
 
             await Task.Delay(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    private async Task<MessageResponse> GetClaudeMessageAsync(MessageParameters parameters)
+    {
+        try
+        {
+            return await _claude.Messages.GetClaudeMessageAsync(parameters);
+        }
+        catch (HttpRequestException requestException)
+        {
+            if ((int) requestException.StatusCode! != (int) AnthropicErrorCode.OverloadedError) throw;
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            return await _claude.Messages.GetClaudeMessageAsync(parameters);
         }
     }
 
@@ -463,7 +478,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             Temperature = 1.0m,
         };
 
-        MessageResponse? res = await _claude.Messages.GetClaudeMessageAsync(parameters);
+        MessageResponse? res = await GetClaudeMessageAsync(parameters);
 
         var branchName = res.Message?.ToString().Trim() ?? "";
 
