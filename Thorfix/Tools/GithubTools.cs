@@ -2,6 +2,7 @@
 using LibGit2Sharp;
 using Octokit;
 using Branch = LibGit2Sharp.Branch;
+using Credentials = LibGit2Sharp.Credentials;
 using Repository = LibGit2Sharp.Repository;
 using Signature = LibGit2Sharp.Signature;
 
@@ -86,7 +87,7 @@ public class GithubTools
             _repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
                 new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
 
-            PushChanges(_repository, _branch);
+            PushChanges(_repository, _credentials, _branch);
 
             return Task.FromResult(new ToolResult("Commited changes successfully"));
         }
@@ -110,13 +111,13 @@ public class GithubTools
         }
     }
 
-    public void PushChanges(Repository repository, Branch? branch = null)
+    public static void PushChanges(Repository repository, Credentials credentials, Branch? branch = null)
     {
         try
         {
             var pushOptions = new PushOptions
             {
-                CredentialsProvider = (_, _, _) => _credentials
+                CredentialsProvider = (_, _, _) => credentials
             };
             repository.Network.Push(branch ?? repository.Head, pushOptions);
         }

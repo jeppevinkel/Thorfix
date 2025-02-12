@@ -190,7 +190,7 @@ public class Thorfix
             {
                 // No more tool calls - let's check if the changes satisfy the requirements
                 var changes = repository.Diff.Compare<TreeChanges>();
-                StageChanges(repository);
+                GithubTools.StageChanges(repository);
 
                 // print number of changes and changed files
                 Console.WriteLine($"Number of changes: {changes.Count()}");
@@ -288,7 +288,7 @@ public class Thorfix
                     {
                         isComplete = true;
                         CommitChanges(repository, $"Thorfix: #{issue.Number}");
-                        PushChanges(repository, thorfixBranch);
+                        GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
 
                         // Convert to pull request since we're done
                         await githubTools.ConvertIssueToPullRequest();
@@ -357,18 +357,6 @@ public class Thorfix
         throw new Exception("Failed to get Claude message after 3 tries");
     }
 
-    public void StageChanges(Repository repository)
-    {
-        try
-        {
-            Commands.Stage(repository, "*");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Exception:RepoActions:StageChanges " + ex.Message);
-        }
-    }
-
     public void CommitChanges(Repository repository, string commitMessage)
     {
         try
@@ -379,29 +367,6 @@ public class Thorfix
         catch (Exception e)
         {
             Console.WriteLine("Exception:RepoActions:CommitChanges " + e.Message);
-        }
-    }
-
-    public void PushChanges(Repository repository, Branch? branch = null)
-    {
-        try
-        {
-            var pushOptions = new PushOptions
-            {
-                CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
-            };
-            if (branch is not null)
-            {
-                repository.Network.Push(branch, pushOptions);
-            }
-            else
-            {
-                repository.Network.Push(repository.Head, pushOptions);
-            }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
         }
     }
 
