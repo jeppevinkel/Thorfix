@@ -296,7 +296,7 @@ public class Thorfix
                         // Convert to pull request since we're done
                         await githubTools.ConvertIssueToPullRequest();
                         await githubTools.IssueAddComment(
-                            "Changes have been completed.");
+                            "This issue has been deemed completed.");
                     }
                     else
                     {
