@@ -71,6 +71,7 @@ public class GithubTools
         }
         catch (Exception e)
         {
+            await Console.Error.WriteLineAsync(e.ToString());
             return new ToolResult(e.ToString(), true);
         }
     }
