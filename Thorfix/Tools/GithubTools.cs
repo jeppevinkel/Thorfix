@@ -80,6 +80,8 @@ public class GithubTools
         Console.WriteLine($"Create commit {commitMessage}");
         try
         {
+            StageChanges(_repository);
+            
             commitMessage += $"\n#{_issue.Number}";
             _repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
                 new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
@@ -93,6 +95,18 @@ public class GithubTools
             Console.WriteLine("Exception:RepoActions:CommitChanges " + e.Message);
 
             return Task.FromResult(new ToolResult(e.ToString(), true));
+        }
+    }
+    
+    public static void StageChanges(Repository repository)
+    {
+        try
+        {
+            Commands.Stage(repository, "*");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception:RepoActions:StageChanges " + ex.Message);
         }
     }
 
