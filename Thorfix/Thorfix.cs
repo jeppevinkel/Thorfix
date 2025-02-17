@@ -603,56 +603,39 @@ Where the numbers after @@ - represent the line numbers in the original file and
     {
         try
         {
-            // Let Claude analyze the codebase and suggest improvements
+            FileSystemTools fileSystemTools = new FileSystemTools();
+            var allFiles = await fileSystemTools.ListFiles();
+            var relevantFiles = allFiles.Where(f => f.EndsWith(".cs") && !f.Contains("/obj/") && !f.Contains("/bin/"))
+                .Where(f => f.StartsWith("/thorfix/Thorfix/"))
+                .ToList();
+
+            // Let Claude analyze the codebase and create a new issue
             var messages = new List<Message>
             {
                 new(RoleType.User,
-                    "You are a software development bot. Your task is to analyze the codebase and suggest the next " +
-                    "most important improvement that should be made. This could be new functionality, improvements to " +
-                    "existing functionality, better error handling, more tests, or documentation improvements.\n\n" +
+                    "You are a software development bot. Your task is to create a new issue for improving the codebase.\n\n" +
+                    "Using the file system tools available to you (ListFiles and ReadFile), analyze the codebase and suggest " +
+                    "the next most important improvement. This could be:\n" +
+                    "- New functionality\n" +
+                    "- Improvements to existing code\n" +
+                    "- Better error handling\n" +
+                    "- More tests\n" +
+                    "- Documentation improvements\n" +
+                    "- Performance enhancements\n" +
+                    "- Security improvements\n\n" +
                     "Your response should contain:\n" +
                     "1. A clear title for the improvement task\n" +
                     "2. A detailed description of what needs to be done and why it's important\n" +
                     "3. Just these two items - no other text or explanations\n\n" +
-                    "Current codebase context:\n")
+                    "Available files:\n" + string.Join("\n", relevantFiles) + "\n\n" +
+                    "Use the tools to read and analyze files as needed.")
             };
 
-            // First, let Claude analyze which files are most relevant
-            var allFiles = Directory.GetFiles($"/app/repository/{_repoName}/Thorfix", "*.cs", SearchOption.AllDirectories)
-                .Where(f => !Path.GetFileName(f).Equals("obj") && !Path.GetFileName(f).Equals("bin"))
-                .ToList();
-
-            var fileAnalysisMessages = new List<Message>
+            var tools = new List<Tool>
             {
-                new(RoleType.User,
-                    "You are a software development bot. Review these file paths and select the most important ones " +
-                    "that would be needed to understand the codebase and suggest meaningful improvements. " +
-                    "Return only the file paths, one per line, no other text. Select a maximum of 5 files:\n\n" +
-                    string.Join("\n", allFiles))
+                Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
+                Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile))
             };
-
-            var fileAnalysisParams = new MessageParameters()
-            {
-                Messages = fileAnalysisMessages,
-                MaxTokens = 1000,
-                Model = AnthropicModels.Claude35Sonnet,
-                Stream = false,
-                Temperature = 0.7m,
-            };
-
-            var fileAnalysisRes = await GetClaudeMessageAsync(fileAnalysisParams);
-            var selectedFiles = fileAnalysisRes.Message.ToString()
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(f => f.Trim())
-                .Where(f => allFiles.Contains(f))
-                .ToList();
-
-            // Add selected file contents for context
-            foreach (var file in selectedFiles)
-            {
-                messages[0].Value += $"\n{file}:\n";
-                messages[0].Value += await File.ReadAllTextAsync(file);
-            }
 
             var parameters = new MessageParameters()
             {
@@ -661,9 +644,23 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 Model = AnthropicModels.Claude35Sonnet,
                 Stream = false,
                 Temperature = 1.0m,
+                Tools = tools
             };
 
             var res = await GetClaudeMessageAsync(parameters);
+            
+            // Process any tool calls first
+            while (res.ToolCalls?.Count > 0)
+            {
+                foreach (Function? toolCall in res.ToolCalls)
+                {
+                    var result = await toolCall.InvokeAsync<ToolResult>();
+                    messages.Add(new Message(toolCall, result.Response, result.IsError));
+                }
+                
+                res = await GetClaudeMessageAsync(parameters);
+            }
+            
             var suggestionLines = res.Message.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
             
             // First line is title, rest is description
