@@ -35,7 +35,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and Publush the Docker image
+      - name: Build and Publish the Docker image
         run: |
           label=$(date +%s)
           latest_tag="${{steps.extract_branch.outputs.branch == 'master' && '--tag ghcr.io/jeppevinkel/thorfix:latest' || '--tag ghcr.io/jeppevinkel/thorfix:latest-dev'}}"
