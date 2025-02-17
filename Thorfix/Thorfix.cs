@@ -103,7 +103,10 @@ public class Thorfix
                 // Create a new issue if no applicable issues were found
                 if (!handledIssue && _continuousMode)
                 {
+                    using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
+                        $"/app/repository/{_repoName}"));
                     await CreateFollowUpIssue();
+                    Directory.Delete($"/app/repository/{_repoName}", true);
                     await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
                 }
 
