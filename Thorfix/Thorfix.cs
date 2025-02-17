@@ -603,37 +603,60 @@ Where the numbers after @@ - represent the line numbers in the original file and
     {
         try
         {
-            // Get repository codebase analysis to identify potential improvements
-            var newIssueTitle = "Follow-up: Code Analysis and Improvements";
-            var newIssueBody = new StringBuilder();
-            newIssueBody.AppendLine("As part of continuous development mode, this is a follow-up issue to analyze and improve the codebase.");
-            newIssueBody.AppendLine();
-            newIssueBody.AppendLine($"Following the completion of #{completedIssue.Number} ({completedIssue.Title}), please:");
-            newIssueBody.AppendLine();
-            newIssueBody.AppendLine("1. Analyze the current codebase for potential improvements");
-            newIssueBody.AppendLine("2. Identify opportunities for:");
-            newIssueBody.AppendLine("   - Code optimization");
-            newIssueBody.AppendLine("   - Enhanced error handling");
-            newIssueBody.AppendLine("   - Better testing coverage");
-            newIssueBody.AppendLine("   - Documentation improvements");
-            newIssueBody.AppendLine("   - Performance enhancements");
-            newIssueBody.AppendLine("3. Implement the identified improvements");
-            newIssueBody.AppendLine();
-            newIssueBody.AppendLine("This is an automated follow-up issue created by Thorfix continuous mode.");
+            // Let Claude analyze the codebase and suggest improvements
+            var messages = new List<Message>
+            {
+                new(RoleType.User,
+                    "You are a software development bot. Your task is to analyze the codebase and suggest the next " +
+                    "most important improvement that should be made. This could be new functionality, improvements to " +
+                    "existing functionality, better error handling, more tests, or documentation improvements.\n\n" +
+                    "Your response should contain:\n" +
+                    "1. A clear title for the improvement task\n" +
+                    "2. A detailed description of what needs to be done and why it's important\n" +
+                    "3. Just these two items - no other text or explanations\n\n" +
+                    "Current codebase context:\n")
+            };
+
+            // Add file contents for context
+            var files = Directory.GetFiles($"/app/repository/{_repoName}/Thorfix", "*.cs", SearchOption.AllDirectories);
+            foreach (var file in files)
+            {
+                if (Path.GetFileName(file) != "obj" && Path.GetFileName(file) != "bin")
+                {
+                    messages[0].Value += $"\n{file}:\n";
+                    messages[0].Value += await File.ReadAllTextAsync(file);
+                }
+            }
+
+            var parameters = new MessageParameters()
+            {
+                Messages = messages,
+                MaxTokens = 4048,
+                Model = AnthropicModels.Claude35Sonnet,
+                Stream = false,
+                Temperature = 1.0m,
+            };
+
+            var res = await GetClaudeMessageAsync(parameters);
+            var suggestionLines = res.Message.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            // First line is title, rest is description
+            var newIssueTitle = suggestionLines[0].Trim();
+            var newIssueBody = string.Join("\n", suggestionLines.Skip(1)).Trim();
 
             var newIssue = new NewIssue(newIssueTitle)
             {
-                Body = newIssueBody.ToString()
+                Body = newIssueBody
             };
             
             // Add the thorfix label to the new issue
             newIssue.Labels.Add("thorfix");
             
-            await _github.Issue.Create(_repoOwner, _repoName, newIssue);
+            var createdIssue = await _github.Issue.Create(_repoOwner, _repoName, newIssue);
             
             // Add a comment to the completed issue linking to the follow-up
             await _github.Issue.Comment.Create(_repoOwner, _repoName, completedIssue.Number,
-                "[FROM THOR]\n\nIn continuous mode: Creating a follow-up issue for further improvements. 🔄");
+                $"[FROM THOR]\n\nIn continuous mode: Created follow-up issue #{createdIssue.Number} for further improvements. 🔄");
         }
         catch (Exception ex)
         {
