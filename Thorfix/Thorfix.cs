@@ -23,8 +23,9 @@ public class Thorfix
     private readonly string _repoOwner;
     private readonly string _repoName;
     private readonly UsernamePasswordCredentials _usernamePasswordCredentials;
+    private readonly bool _continuousMode;
 
-    public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName)
+    public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName, bool continuousMode = false)
     {
         _github = new GitHubClient(new ProductHeaderValue("IssueBot"))
         {
@@ -34,6 +35,7 @@ public class Thorfix
         _claude = new AnthropicClient(claudeApiKey);
         _repoOwner = repoOwner;
         _repoName = repoName;
+        _continuousMode = continuousMode;
 
         _usernamePasswordCredentials = new UsernamePasswordCredentials()
         {
@@ -75,6 +77,12 @@ public class Thorfix
                         }
 
                         await HandleIssue(issue);
+                        
+                        if (_continuousMode)
+                        {
+                            // Create a follow-up issue to continue development
+                            await CreateFollowUpIssue(issue);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -87,7 +95,7 @@ public class Thorfix
                     }
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken); // Check every 5 minutes
+                await Task.Delay(_continuousMode ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(5), cancellationToken);
             }
             catch (Exception ex)
             {
@@ -476,6 +484,49 @@ Where the numbers after @@ - represent the line numbers in the original file and
         var branchName = res.Message?.ToString().Trim() ?? "";
 
         return branchName.Replace(' ', '-');
+    }
+
+    private async Task CreateFollowUpIssue(Issue completedIssue)
+    {
+        try
+        {
+            // Get repository codebase analysis to identify potential improvements
+            var newIssueTitle = "Follow-up: Code Analysis and Improvements";
+            var newIssueBody = new StringBuilder();
+            newIssueBody.AppendLine("As part of continuous development mode, this is a follow-up issue to analyze and improve the codebase.");
+            newIssueBody.AppendLine();
+            newIssueBody.AppendLine($"Following the completion of #{completedIssue.Number} ({completedIssue.Title}), please:");
+            newIssueBody.AppendLine();
+            newIssueBody.AppendLine("1. Analyze the current codebase for potential improvements");
+            newIssueBody.AppendLine("2. Identify opportunities for:");
+            newIssueBody.AppendLine("   - Code optimization");
+            newIssueBody.AppendLine("   - Enhanced error handling");
+            newIssueBody.AppendLine("   - Better testing coverage");
+            newIssueBody.AppendLine("   - Documentation improvements");
+            newIssueBody.AppendLine("   - Performance enhancements");
+            newIssueBody.AppendLine("3. Implement the identified improvements");
+            newIssueBody.AppendLine();
+            newIssueBody.AppendLine("This is an automated follow-up issue created by Thorfix continuous mode.");
+
+            var newIssue = new NewIssue(newIssueTitle)
+            {
+                Body = newIssueBody.ToString()
+            };
+            
+            // Add the thorfix label to the new issue
+            newIssue.Labels.Add("thorfix");
+            
+            await _github.Issue.Create(_repoOwner, _repoName, newIssue);
+            
+            // Add a comment to the completed issue linking to the follow-up
+            await _github.Issue.Comment.Create(_repoOwner, _repoName, completedIssue.Number,
+                "[FROM THOR]\n\nIn continuous mode: Creating a follow-up issue for further improvements. 🔄");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating follow-up issue: {ex.Message}");
+            // Don't throw - we don't want to break the main flow if follow-up creation fails
+        }
     }
 
     private string RemoveEmptyLines(string lines)
