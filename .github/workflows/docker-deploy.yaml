@@ -38,8 +38,8 @@ jobs:
       - name: Build and Publish the Docker image
         run: |
           label=$(date +%s)
-          latest_tag="${{steps.extract_branch.outputs.branch == 'master' && '--tag ghcr.io/jeppevinkel/thorfix:latest' || '--tag ghcr.io/jeppevinkel/thorfix:latest-dev'}}"
-          docker build . --file Thorfix/Dockerfile $latest_tag --tag ghcr.io/jeppevinkel/thorfix:${{steps.tag.outputs.new_tag}}
+          latest_tag="${{steps.extract_branch.outputs.branch == 'master' && '--tag ghcr.io/jeppevinkel/thorfix:latest' || ''}}"
+          docker build . --file Thorfix/Dockerfile $latest_tag --tag ghcr.io/jeppevinkel/thorfix:latest-dev --tag ghcr.io/jeppevinkel/thorfix:${{steps.tag.outputs.new_tag}}
           docker push --all-tags ghcr.io/jeppevinkel/thorfix
       - name: Trigger Dev Container Recreation
         uses: distributhor/workflow-webhook@v3
