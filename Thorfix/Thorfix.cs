@@ -335,7 +335,7 @@ public class Thorfix
                                     // Create the merge
                                     var mergePullRequest = new MergePullRequest
                                     {
-                                        CommitTitle = $"Thorfix: Auto-merge PR #{pullRequest.Number}",
+                                        CommitTitle = $"Thorfix: Auto-merge PR #{fullPullRequest.Number}",
                                         CommitMessage = $"Auto-merged by Thorfix continuous mode\n\nResolves #{issue.Number}",
                                         MergeMethod = PullRequestMergeMethod.Merge
                                     };
@@ -573,7 +573,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             }
 
             // Get required reviews
-            var requiredReviews = await _github.Repository.Branch.GetProtection(_repoOwner, _repoName, pullRequest.Base.Ref);
+            var requiredReviews = await _github.Repository.Branch.GetBranchProtection(_repoOwner, _repoName, pullRequest.Base.Ref);
             
             if (requiredReviews?.RequiredPullRequestReviews != null)
             {
