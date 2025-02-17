@@ -9,7 +9,8 @@ internal static class Program
             Environment.GetEnvironmentVariable("GITHUB_TOKEN") ?? "",
             Environment.GetEnvironmentVariable("CLAUDE_API_KEY") ?? "",
             Environment.GetEnvironmentVariable("REPO_OWNER") ?? "",
-            Environment.GetEnvironmentVariable("REPO_NAME") ?? ""
+            Environment.GetEnvironmentVariable("REPO_NAME") ?? "",
+            bool.TryParse(Environment.GetEnvironmentVariable("THORFIX_CONTINUOUS_MODE"), out bool continuousMode) && continuousMode
         );
 
         await thorfix.MonitorAndHandleIssues();

@@ -23,8 +23,10 @@ public class Thorfix
     private readonly string _repoOwner;
     private readonly string _repoName;
     private readonly UsernamePasswordCredentials _usernamePasswordCredentials;
+    private readonly bool _continuousMode;
+    private readonly int _prMergeDelayMinutes;
 
-    public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName)
+    public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName, bool continuousMode = false)
     {
         _github = new GitHubClient(new ProductHeaderValue("IssueBot"))
         {
@@ -34,6 +36,8 @@ public class Thorfix
         _claude = new AnthropicClient(claudeApiKey);
         _repoOwner = repoOwner;
         _repoName = repoName;
+        _continuousMode = continuousMode;
+        _prMergeDelayMinutes = int.TryParse(Environment.GetEnvironmentVariable("THORFIX_PR_MERGE_DELAY_MINUTES"), out int delay) ? delay : 6;
 
         _usernamePasswordCredentials = new UsernamePasswordCredentials()
         {
@@ -75,6 +79,12 @@ public class Thorfix
                         }
 
                         await HandleIssue(issue);
+                        
+                        if (_continuousMode)
+                        {
+                            // Create a follow-up issue to continue development
+                            await CreateFollowUpIssue(issue);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -87,7 +97,7 @@ public class Thorfix
                     }
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken); // Check every 5 minutes
+                await Task.Delay(_continuousMode ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(5), cancellationToken);
             }
             catch (Exception ex)
             {
@@ -268,6 +278,7 @@ public class Thorfix
                     // We have changes - let's verify them
                     parameters.Messages.Add(new Message(RoleType.User,
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
+                        "Do not suggest making unit tests unless explicitly requested. " +
                         "If they do, respond with just '[COMPLETE]'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
 
@@ -293,10 +304,75 @@ public class Thorfix
                             GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
                         }
 
-                        // Convert to pull request since we're done
-                        await githubTools.ConvertIssueToPullRequest();
-                        await githubTools.IssueAddComment(
-                            "This issue has been deemed completed.");
+                        // Convert to pull request and handle merging
+                        var convertResult = await githubTools.ConvertIssueToPullRequest();
+                        if (convertResult.IsError)
+                        {
+                            await githubTools.IssueAddComment($"Failed to create pull request: {convertResult.Response}");
+                            continue;
+                        }
+
+                        // Extract PR number from the success message
+                        var prNumberMatch = Regex.Match(convertResult.Response, @"pull request #(\d+)");
+                        if (!prNumberMatch.Success)
+                        {
+                            await githubTools.IssueAddComment("Failed to parse pull request number from response");
+                            continue;
+                        }
+
+                        var prNumber = int.Parse(prNumberMatch.Groups[1].Value);
+                        
+                        if (_continuousMode)
+                        {
+                            try
+                            {
+                                // Add a comment about automatic merging
+                                await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
+                                    "[FROM THOR]\n\nContinuous mode: Attempting automatic merge of this pull request. 🔄");
+                                
+                                // Add a configurable delay to account for potential build pipelines
+                                await Task.Delay(TimeSpan.FromMinutes(_prMergeDelayMinutes));
+
+                                // Get the full PR details needed for merge checks
+                                var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, prNumber);
+                                
+                                if (await CanMergePullRequest(fullPullRequest))
+                                {
+                                    // Create the merge
+                                    var mergePullRequest = new MergePullRequest
+                                    {
+                                        CommitTitle = $"Thorfix: Auto-merge PR #{fullPullRequest.Number}",
+                                        CommitMessage = $"Auto-merged by Thorfix continuous mode\n\nResolves #{issue.Number}",
+                                        MergeMethod = PullRequestMergeMethod.Merge
+                                    };
+
+                                    // Try to merge the pull request
+                                    await _github.PullRequest.Merge(_repoOwner, _repoName, prNumber, mergePullRequest);
+                                    
+                                    // Close the issue if merge was successful
+                                    await _github.Issue.Update(_repoOwner, _repoName, issue.Number, new IssueUpdate
+                                    {
+                                        State = ItemState.Closed
+                                    });
+
+                                    await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
+                                        "[FROM THOR]\n\nContinuous mode: Successfully merged pull request and closed issue. ✅");
+                                    
+                                    // Add the thordone label
+                                    await _github.Issue.Labels.AddToIssue(_repoOwner, _repoName, issue.Number, new[] { "thordone" });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
+                                    $"[FROM THOR]\n\nContinuous mode: Failed to auto-merge pull request. ⚠️\nError: {ex.Message}\n\nPlease review and merge manually.");
+                            }
+                        }
+                        else
+                        {
+                            await githubTools.IssueAddComment(
+                                "This issue has been deemed completed.");
+                        }
                     }
                     else
                     {
@@ -476,6 +552,155 @@ Where the numbers after @@ - represent the line numbers in the original file and
         var branchName = res.Message?.ToString().Trim() ?? "";
 
         return branchName.Replace(' ', '-');
+    }
+
+    private async Task<bool> CanMergePullRequest(PullRequest pullRequest)
+    {
+        try
+        {
+            // Check if PR is mergeable
+            if (pullRequest.Mergeable != true)
+            {
+                await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                    "[FROM THOR]\n\nCannot auto-merge: Pull request has conflicts that need to be resolved manually. 🔄");
+                return false;
+            }
+
+            // Get PR status/checks
+            var status = await _github.Repository.Status.GetAll(_repoOwner, _repoName, pullRequest.Head.Sha);
+            
+            // If there are any status checks and they're not all successful, don't merge
+            if (status.Any() && status.Any(s => s.State != CommitState.Success))
+            {
+                var failedChecks = string.Join(", ", status.Where(s => s.State != CommitState.Success).Select(s => s.Context));
+                await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                    $"[FROM THOR]\n\nCannot auto-merge: The following checks are not passing: {failedChecks}");
+                return false;
+            }
+
+            // Get required reviews
+            try
+            {
+                BranchProtectionSettings? requiredReviews =
+                    await _github.Repository.Branch.GetBranchProtection(_repoOwner, _repoName, pullRequest.Base.Ref);
+
+                if (requiredReviews?.RequiredPullRequestReviews != null)
+                {
+                    var reviews = await _github.PullRequest.Review.GetAll(_repoOwner, _repoName, pullRequest.Number);
+                    var approvalCount = reviews.Count(r => r.State == PullRequestReviewState.Approved);
+
+                    if (approvalCount < requiredReviews.RequiredPullRequestReviews.RequiredApprovingReviewCount)
+                    {
+                        await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                            "[FROM THOR]\n\nCannot auto-merge: Pull request requires additional approvals. 🔄");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // ignored
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking merge status: {ex.Message}");
+            await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                $"[FROM THOR]\n\nError checking merge status: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task CreateFollowUpIssue(Issue completedIssue)
+    {
+        try
+        {
+            var fileSystemTools = new FileSystemTools();
+            ToolResult allFiles = await fileSystemTools.ListFiles();
+            var relevantFiles =  allFiles.Response.Split('\n').Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"))
+                .ToList();
+
+            // Let Claude analyze the codebase and create a new issue
+            var messages = new List<Message>
+            {
+                new(RoleType.User,
+                    "You are a software development bot. Your task is to create a new issue for improving the codebase.\n\n" +
+                    "Using the file system tools available to you (ListFiles and ReadFile), analyze the codebase and suggest " +
+                    "the next most important improvement. This could be:\n" +
+                    "- New functionality\n" +
+                    "- Improvements to existing code\n" +
+                    "- Better error handling\n" +
+                    "- Documentation improvements\n" +
+                    "- Performance enhancements\n" +
+                    "- Security improvements\n\n" +
+                    "Your response should contain:\n" +
+                    "1. A clear title for the improvement task\n" +
+                    "2. A detailed description of what needs to be done and why it's important\n" +
+                    "3. The first line of your response should be the title of the issue, with the description on subsequent lines\n" +
+                    "4. Just these two items - no other text or explanations\n\n" +
+                    "Available files:\n" + string.Join("\n", relevantFiles) + "\n\n" +
+                    "Use the tools to read and analyze files as needed.")
+            };
+
+            var tools = new List<Tool>
+            {
+                Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
+                Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile))
+            };
+
+            var parameters = new MessageParameters()
+            {
+                Messages = messages,
+                MaxTokens = 4048,
+                Model = AnthropicModels.Claude35Sonnet,
+                Stream = false,
+                Temperature = 1.0m,
+                Tools = tools
+            };
+
+            MessageResponse res = await GetClaudeMessageAsync(parameters);
+            messages.Add(res.Message);
+            
+            // Process any tool calls first
+            while (res.ToolCalls?.Count > 0)
+            {
+                foreach (Function? toolCall in res.ToolCalls)
+                {
+                    var result = await toolCall.InvokeAsync<ToolResult>();
+                    messages.Add(new Message(toolCall, result.Response, result.IsError));
+                }
+                
+                res = await GetClaudeMessageAsync(parameters);
+                messages.Add(res.Message);
+            }
+            
+            var suggestionLines = res.Message.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            // First line is title, rest is description
+            var newIssueTitle = suggestionLines[0].Trim();
+            var newIssueBody = string.Join("\n", suggestionLines.Skip(1)).Trim();
+
+            var newIssue = new NewIssue(newIssueTitle)
+            {
+                Body = newIssueBody
+            };
+            
+            // Add the thorfix label to the new issue
+            newIssue.Labels.Add("thorfix");
+            
+            var createdIssue = await _github.Issue.Create(_repoOwner, _repoName, newIssue);
+            
+            // Add a comment to the completed issue linking to the follow-up
+            await _github.Issue.Comment.Create(_repoOwner, _repoName, completedIssue.Number,
+                $"[FROM THOR]\n\nIn continuous mode: Created follow-up issue #{createdIssue.Number} for further improvements. 🔄");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating follow-up issue: {ex.Message}");
+            // Don't throw - we don't want to break the main flow if follow-up creation fails
+        }
     }
 
     private string RemoveEmptyLines(string lines)
