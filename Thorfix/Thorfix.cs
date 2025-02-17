@@ -603,10 +603,9 @@ Where the numbers after @@ - represent the line numbers in the original file and
     {
         try
         {
-            FileSystemTools fileSystemTools = new FileSystemTools();
-            var allFiles = await fileSystemTools.ListFiles();
-            var relevantFiles = allFiles.Where(f => f.EndsWith(".cs") && !f.Contains("/obj/") && !f.Contains("/bin/"))
-                .Where(f => f.StartsWith("/thorfix/Thorfix/"))
+            var fileSystemTools = new FileSystemTools();
+            ToolResult allFiles = await fileSystemTools.ListFiles();
+            var relevantFiles =  allFiles.Response.Split('\n').Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"))
                 .ToList();
 
             // Let Claude analyze the codebase and create a new issue
@@ -647,7 +646,8 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 Tools = tools
             };
 
-            var res = await GetClaudeMessageAsync(parameters);
+            MessageResponse res = await GetClaudeMessageAsync(parameters);
+            messages.Add(res.Message);
             
             // Process any tool calls first
             while (res.ToolCalls?.Count > 0)
@@ -659,6 +659,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 }
                 
                 res = await GetClaudeMessageAsync(parameters);
+                messages.Add(res.Message);
             }
             
             var suggestionLines = res.Message.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
