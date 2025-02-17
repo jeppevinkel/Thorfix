@@ -25,6 +25,7 @@ public class Thorfix
     private readonly UsernamePasswordCredentials _usernamePasswordCredentials;
     private readonly bool _continuousMode;
     private readonly int _prMergeDelayMinutes;
+    private readonly List<string> _messageHistory;
 
     public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName, bool continuousMode = false)
     {
@@ -34,6 +35,7 @@ public class Thorfix
         };
 
         _claude = new AnthropicClient(claudeApiKey);
+        _messageHistory = new List<string>();
         _repoOwner = repoOwner;
         _repoName = repoName;
         _continuousMode = continuousMode;
@@ -204,6 +206,7 @@ public class Thorfix
             foreach (Function? toolCall in res.ToolCalls)
             {
                 var result = await toolCall.InvokeAsync<ToolResult>();
+                _messageHistory.Add($"Tool Call: {toolCall.Name}\nParameters: {toolCall.Arguments}\nResult: {result.Response}");
                 parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
             }
 
@@ -381,12 +384,28 @@ public class Thorfix
                         }
                         else
                         {
-                            await githubTools.IssueAddComment(
-                                "This issue has been deemed completed.");
+                            // Create the completion message with history
+                            var completionComment = new StringBuilder();
+                            completionComment.AppendLine("This issue has been deemed completed.");
+                            completionComment.AppendLine();
+                            completionComment.AppendLine("<details>");
+                            completionComment.AppendLine("<summary>LLM Conversation History</summary>");
+                            completionComment.AppendLine();
+                            foreach (var message in _messageHistory)
+                            {
+                                completionComment.AppendLine(message);
+                                completionComment.AppendLine();
+                            }
+                            completionComment.AppendLine("</details>");
+
+                            await githubTools.IssueAddComment(completionComment.ToString());
                         }
                     }
                     else
                     {
+                                        // Add the message history from this run to our tracking
+                        _messageHistory.Add($"Assistant: {verificationResponse.Message}");
+                        
                         // Add a detailed comment explaining why the changes don't meet requirements
                         var commentBuilder = new StringBuilder();
                         commentBuilder.AppendLine("⚠️ Code Review Results: Requirements Not Yet Met");
@@ -425,6 +444,19 @@ public class Thorfix
 
     private async Task<MessageResponse> GetClaudeMessageAsync(MessageParameters parameters)
     {
+        // Track the user/system messages being sent
+        foreach (var message in parameters.Messages.Skip(_messageHistory.Count))
+        {
+            if (message.Role == RoleType.User)
+            {
+                _messageHistory.Add($"User: {message.Content}");
+            }
+            else if (message.Role == RoleType.Assistant)
+            {
+                _messageHistory.Add($"Assistant: {message.Content}");
+            }
+        }
+
         var triesLeft = 3;
         while (triesLeft-- > 0)
         {
