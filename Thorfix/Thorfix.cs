@@ -24,6 +24,7 @@ public class Thorfix
     private readonly string _repoName;
     private readonly UsernamePasswordCredentials _usernamePasswordCredentials;
     private readonly bool _continuousMode;
+    private readonly int _prMergeDelayMinutes;
 
     public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName, bool continuousMode = false)
     {
@@ -36,6 +37,7 @@ public class Thorfix
         _repoOwner = repoOwner;
         _repoName = repoName;
         _continuousMode = continuousMode;
+        _prMergeDelayMinutes = int.TryParse(Environment.GetEnvironmentVariable("THORFIX_PR_MERGE_DELAY_MINUTES"), out int delay) ? delay : 6;
 
         _usernamePasswordCredentials = new UsernamePasswordCredentials()
         {
@@ -327,8 +329,8 @@ public class Thorfix
                                 await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
                                     "[FROM THOR]\n\nContinuous mode: Attempting automatic merge of this pull request. 🔄");
                                 
-                                // Add a delay to account for potential build pipelines
-                                await Task.Delay(TimeSpan.FromMinutes(6));
+                                // Add a configurable delay to account for potential build pipelines
+                                await Task.Delay(TimeSpan.FromMinutes(_prMergeDelayMinutes));
 
                                 // Get the full PR details needed for merge checks
                                 var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, prNumber);
