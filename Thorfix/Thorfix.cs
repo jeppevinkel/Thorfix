@@ -617,15 +617,41 @@ Where the numbers after @@ - represent the line numbers in the original file and
                     "Current codebase context:\n")
             };
 
-            // Add file contents for context
-            var files = Directory.GetFiles($"/app/repository/{_repoName}/Thorfix", "*.cs", SearchOption.AllDirectories);
-            foreach (var file in files)
+            // First, let Claude analyze which files are most relevant
+            var allFiles = Directory.GetFiles($"/app/repository/{_repoName}/Thorfix", "*.cs", SearchOption.AllDirectories)
+                .Where(f => !Path.GetFileName(f).Equals("obj") && !Path.GetFileName(f).Equals("bin"))
+                .ToList();
+
+            var fileAnalysisMessages = new List<Message>
             {
-                if (Path.GetFileName(file) != "obj" && Path.GetFileName(file) != "bin")
-                {
-                    messages[0].Value += $"\n{file}:\n";
-                    messages[0].Value += await File.ReadAllTextAsync(file);
-                }
+                new(RoleType.User,
+                    "You are a software development bot. Review these file paths and select the most important ones " +
+                    "that would be needed to understand the codebase and suggest meaningful improvements. " +
+                    "Return only the file paths, one per line, no other text. Select a maximum of 5 files:\n\n" +
+                    string.Join("\n", allFiles))
+            };
+
+            var fileAnalysisParams = new MessageParameters()
+            {
+                Messages = fileAnalysisMessages,
+                MaxTokens = 1000,
+                Model = AnthropicModels.Claude35Sonnet,
+                Stream = false,
+                Temperature = 0.7m,
+            };
+
+            var fileAnalysisRes = await GetClaudeMessageAsync(fileAnalysisParams);
+            var selectedFiles = fileAnalysisRes.Message.ToString()
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim())
+                .Where(f => allFiles.Contains(f))
+                .ToList();
+
+            // Add selected file contents for context
+            foreach (var file in selectedFiles)
+            {
+                messages[0].Value += $"\n{file}:\n";
+                messages[0].Value += await File.ReadAllTextAsync(file);
             }
 
             var parameters = new MessageParameters()
