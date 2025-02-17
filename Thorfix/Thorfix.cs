@@ -278,6 +278,7 @@ public class Thorfix
                     // We have changes - let's verify them
                     parameters.Messages.Add(new Message(RoleType.User,
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
+                        "Do not suggest making unit tests unless explicitly requested. " +
                         "If they do, respond with just '[COMPLETE]'. If not, continue making necessary changes. " +
                         "Original issue description: " + issue.Body));
 
@@ -631,14 +632,14 @@ Where the numbers after @@ - represent the line numbers in the original file and
                     "- New functionality\n" +
                     "- Improvements to existing code\n" +
                     "- Better error handling\n" +
-                    "- More tests\n" +
                     "- Documentation improvements\n" +
                     "- Performance enhancements\n" +
                     "- Security improvements\n\n" +
                     "Your response should contain:\n" +
                     "1. A clear title for the improvement task\n" +
                     "2. A detailed description of what needs to be done and why it's important\n" +
-                    "3. Just these two items - no other text or explanations\n\n" +
+                    "3. The first line of your response should be the title of the issue, with the description on subsequent lines\n" +
+                    "4. Just these two items - no other text or explanations\n\n" +
                     "Available files:\n" + string.Join("\n", relevantFiles) + "\n\n" +
                     "Use the tools to read and analyze files as needed.")
             };
