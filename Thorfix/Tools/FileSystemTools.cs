@@ -70,6 +70,33 @@ public class FileSystemTools
             return new ToolResult($"Error while writing {filePath}: {e.Message}", true);
         }
     }
+    
+    [Function("Delete a file from the filesystem")]
+    public async Task<ToolResult> DeleteFile([FunctionParameter("Path to the file", true)] string filePath)
+    {
+        var fullFilePath = GetFullPath(filePath);
+        Console.WriteLine($"Delete the contents of {fullFilePath}");
+        if (!IsPathAllowed(fullFilePath))
+        {
+            return new ToolResult($"Path was outside the root directory", true);
+        }
+
+        try
+        {
+            File.Delete(filePath);
+            return new ($"Deleted {filePath}");
+        }
+        catch (Exception e)
+        {
+            var message = e.Message;
+            if (message.Contains(RootDirectory.FullName))
+            {
+                message = message.Replace(RootDirectory.FullName, "");
+            }
+
+            return new ToolResult($"Failed to delete file: {message}", true);
+        }
+    }
 
     [Function("Apply a patch to a file in the repository")]
     public async Task<ToolResult> ModifyFile([FunctionParameter("Path to the file", true)] string filePath,

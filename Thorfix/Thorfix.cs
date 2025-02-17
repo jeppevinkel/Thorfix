@@ -164,6 +164,7 @@ public class Thorfix
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ListFiles)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.WriteFile)),
+            Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.DeleteFile)),
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ModifyFile)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.CommitChanges)),
