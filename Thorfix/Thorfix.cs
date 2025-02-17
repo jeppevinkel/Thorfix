@@ -326,6 +326,9 @@ public class Thorfix
                                 // Add a comment about automatic merging
                                 await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
                                     "[FROM THOR]\n\nContinuous mode: Attempting automatic merge of this pull request. 🔄");
+                                
+                                // Add a delay to account for potential build pipelines
+                                await Task.Delay(TimeSpan.FromMinutes(6));
 
                                 // Get the full PR details needed for merge checks
                                 var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, prNumber);
