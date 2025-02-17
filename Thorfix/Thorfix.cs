@@ -302,9 +302,24 @@ public class Thorfix
                         }
 
                         // Convert to pull request and handle merging
-                        var pullRequest = await githubTools.ConvertIssueToPullRequest();
+                        var convertResult = await githubTools.ConvertIssueToPullRequest();
+                        if (convertResult.IsError)
+                        {
+                            await githubTools.IssueAddComment($"Failed to create pull request: {convertResult.Response}");
+                            continue;
+                        }
+
+                        // Extract PR number from the success message
+                        var prNumberMatch = Regex.Match(convertResult.Response, @"pull request #(\d+)");
+                        if (!prNumberMatch.Success)
+                        {
+                            await githubTools.IssueAddComment("Failed to parse pull request number from response");
+                            continue;
+                        }
+
+                        var prNumber = int.Parse(prNumberMatch.Groups[1].Value);
                         
-                        if (_continuousMode && pullRequest != null)
+                        if (_continuousMode)
                         {
                             try
                             {
@@ -313,7 +328,7 @@ public class Thorfix
                                     "[FROM THOR]\n\nContinuous mode: Attempting automatic merge of this pull request. 🔄");
 
                                 // Get the full PR details needed for merge checks
-                                var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, pullRequest.Number);
+                                var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, prNumber);
                                 
                                 if (await CanMergePullRequest(fullPullRequest))
                                 {
@@ -326,7 +341,7 @@ public class Thorfix
                                     };
 
                                     // Try to merge the pull request
-                                    await _github.PullRequest.Merge(_repoOwner, _repoName, pullRequest.Number, mergePullRequest);
+                                    await _github.PullRequest.Merge(_repoOwner, _repoName, prNumber, mergePullRequest);
                                     
                                     // Close the issue if merge was successful
                                     await _github.Issue.Update(_repoOwner, _repoName, issue.Number, new IssueUpdate
