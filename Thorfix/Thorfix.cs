@@ -58,6 +58,7 @@ public class Thorfix
                     Labels = {"thorfix"},
                 });
 
+                bool handledIssue = false;
                 foreach (Issue? issue in issues)
                 {
                     var comments = await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number);
@@ -69,6 +70,8 @@ public class Thorfix
                     }
 
                     if (issue.Labels.Any(l => l.Name == "thordone")) continue;
+
+                    handledIssue = true;
 
                     Console.WriteLine($"Processing #{issue.Number}");
                     try
@@ -95,6 +98,13 @@ public class Thorfix
                         Directory.Delete($"/app/repository/{_repoName}", true);
                         Console.WriteLine($"Done with #{issue.Number}");
                     }
+                }
+
+                // Create a new issue if no applicable issues were found
+                if (!handledIssue && _continuousMode)
+                {
+                    await CreateFollowUpIssue();
+                    await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
                 }
 
                 await Task.Delay(_continuousMode ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(5), cancellationToken);
@@ -614,7 +624,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         }
     }
 
-    private async Task CreateFollowUpIssue(Issue completedIssue)
+    private async Task CreateFollowUpIssue(Issue? completedIssue = null)
     {
         try
         {
@@ -694,8 +704,11 @@ Where the numbers after @@ - represent the line numbers in the original file and
             var createdIssue = await _github.Issue.Create(_repoOwner, _repoName, newIssue);
             
             // Add a comment to the completed issue linking to the follow-up
-            await _github.Issue.Comment.Create(_repoOwner, _repoName, completedIssue.Number,
-                $"[FROM THOR]\n\nIn continuous mode: Created follow-up issue #{createdIssue.Number} for further improvements. 🔄");
+            if (completedIssue is not null)
+            {
+                await _github.Issue.Comment.Create(_repoOwner, _repoName, completedIssue.Number,
+                    $"[FROM THOR]\n\nIn continuous mode: Created follow-up issue #{createdIssue.Number} for further improvements. 🔄");
+            }
         }
         catch (Exception ex)
         {
