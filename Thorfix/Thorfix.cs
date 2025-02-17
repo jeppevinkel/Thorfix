@@ -578,19 +578,27 @@ Where the numbers after @@ - represent the line numbers in the original file and
             }
 
             // Get required reviews
-            var requiredReviews = await _github.Repository.Branch.GetBranchProtection(_repoOwner, _repoName, pullRequest.Base.Ref);
-            
-            if (requiredReviews?.RequiredPullRequestReviews != null)
+            try
             {
-                var reviews = await _github.PullRequest.Review.GetAll(_repoOwner, _repoName, pullRequest.Number);
-                var approvalCount = reviews.Count(r => r.State == PullRequestReviewState.Approved);
-                
-                if (approvalCount < requiredReviews.RequiredPullRequestReviews.RequiredApprovingReviewCount)
+                BranchProtectionSettings? requiredReviews =
+                    await _github.Repository.Branch.GetBranchProtection(_repoOwner, _repoName, pullRequest.Base.Ref);
+
+                if (requiredReviews?.RequiredPullRequestReviews != null)
                 {
-                    await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
-                        "[FROM THOR]\n\nCannot auto-merge: Pull request requires additional approvals. 🔄");
-                    return false;
+                    var reviews = await _github.PullRequest.Review.GetAll(_repoOwner, _repoName, pullRequest.Number);
+                    var approvalCount = reviews.Count(r => r.State == PullRequestReviewState.Approved);
+
+                    if (approvalCount < requiredReviews.RequiredPullRequestReviews.RequiredApprovingReviewCount)
+                    {
+                        await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                            "[FROM THOR]\n\nCannot auto-merge: Pull request requires additional approvals. 🔄");
+                        return false;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // ignored
             }
 
             return true;
