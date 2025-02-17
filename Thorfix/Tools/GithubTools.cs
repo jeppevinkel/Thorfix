@@ -1,4 +1,4 @@
-﻿using Anthropic.SDK.Common;
+using Anthropic.SDK.Common;
 using LibGit2Sharp;
 using Octokit;
 using Branch = LibGit2Sharp.Branch;
@@ -66,12 +66,56 @@ public class GithubTools
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
-                new NewPullRequest(_issue.Id, _branchName, "master"));
-            return new ToolResult("Converted the issue into a pull request");
+                new NewPullRequest(_issue.Title, _branchName, "master")
+                {
+                    Body = $"Fixes #{_issue.Number}"
+                });
+            return new ToolResult($"Converted issue #{_issue.Number} into pull request #{pullRequest.Number}");
         }
         catch (Exception e)
         {
             await Console.Error.WriteLineAsync(e.ToString());
+            return new ToolResult(e.ToString(), true);
+        }
+    }
+
+    [Function("Automatically merge a pull request if all checks pass")]
+    public async Task<ToolResult> MergePullRequest(int pullRequestNumber)
+    {
+        try
+        {
+            var pr = await _client.PullRequest.Get(_repoOwner, _repoName, pullRequestNumber);
+            
+            if (!pr.Mergeable.GetValueOrDefault())
+            {
+                return new ToolResult("Pull request has conflicts and cannot be merged automatically", true);
+            }
+
+            // Check if the PR has any status checks
+            var status = await _client.Repository.Status.GetCombined(_repoOwner, _repoName, pr.Head.Sha);
+            if (status.State != CommitState.Success && status.State != CommitState.Pending)
+            {
+                return new ToolResult($"Pull request status checks are not passing. Current state: {status.State}", true);
+            }
+
+            var mergeResult = await _client.PullRequest.Merge(_repoOwner, _repoName, pullRequestNumber,
+                new MergePullRequest { CommitTitle = $"Merge pull request #{pullRequestNumber} from {_branchName}" });
+
+            if (mergeResult.Merged)
+            {
+                // Close the associated issue
+                await _client.Issue.Update(_repoOwner, _repoName, _issue.Number, new IssueUpdate
+                {
+                    State = ItemState.Closed
+                });
+                
+                return new ToolResult($"Successfully merged pull request #{pullRequestNumber} and closed issue #{_issue.Number}");
+            }
+            
+            return new ToolResult($"Failed to merge pull request #{pullRequestNumber}: {mergeResult.Message}", true);
+        }
+        catch (Exception e)
+        {
             return new ToolResult(e.ToString(), true);
         }
     }
