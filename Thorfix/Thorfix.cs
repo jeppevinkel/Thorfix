@@ -301,10 +301,57 @@ public class Thorfix
                             GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
                         }
 
-                        // Convert to pull request since we're done
-                        await githubTools.ConvertIssueToPullRequest();
-                        await githubTools.IssueAddComment(
-                            "This issue has been deemed completed.");
+                        // Convert to pull request and handle merging
+                        var pullRequest = await githubTools.ConvertIssueToPullRequest();
+                        
+                        if (_continuousMode && pullRequest != null)
+                        {
+                            try
+                            {
+                                // Add a comment about automatic merging
+                                await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
+                                    "[FROM THOR]\n\nContinuous mode: Attempting automatic merge of this pull request. 🔄");
+
+                                // Get the full PR details needed for merge checks
+                                var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, pullRequest.Number);
+                                
+                                if (await CanMergePullRequest(fullPullRequest))
+                                {
+                                    // Create the merge
+                                    var mergePullRequest = new MergePullRequest
+                                    {
+                                        CommitTitle = $"Thorfix: Auto-merge PR #{pullRequest.Number}",
+                                        CommitMessage = $"Auto-merged by Thorfix continuous mode\n\nResolves #{issue.Number}",
+                                        MergeMethod = PullRequestMergeMethod.Merge
+                                    };
+
+                                    // Try to merge the pull request
+                                    await _github.PullRequest.Merge(_repoOwner, _repoName, pullRequest.Number, mergePullRequest);
+                                    
+                                    // Close the issue if merge was successful
+                                    await _github.Issue.Update(_repoOwner, _repoName, issue.Number, new IssueUpdate
+                                    {
+                                        State = ItemState.Closed
+                                    });
+
+                                    await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
+                                        "[FROM THOR]\n\nContinuous mode: Successfully merged pull request and closed issue. ✅");
+                                    
+                                    // Add the thordone label
+                                    await _github.Issue.Labels.AddToIssue(_repoOwner, _repoName, issue.Number, new[] { "thordone" });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
+                                    $"[FROM THOR]\n\nContinuous mode: Failed to auto-merge pull request. ⚠️\nError: {ex.Message}\n\nPlease review and merge manually.");
+                            }
+                        }
+                        else
+                        {
+                            await githubTools.IssueAddComment(
+                                "This issue has been deemed completed.");
+                        }
                     }
                     else
                     {
@@ -484,6 +531,57 @@ Where the numbers after @@ - represent the line numbers in the original file and
         var branchName = res.Message?.ToString().Trim() ?? "";
 
         return branchName.Replace(' ', '-');
+    }
+
+    private async Task<bool> CanMergePullRequest(PullRequest pullRequest)
+    {
+        try
+        {
+            // Check if PR is mergeable
+            if (pullRequest.Mergeable != true)
+            {
+                await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                    "[FROM THOR]\n\nCannot auto-merge: Pull request has conflicts that need to be resolved manually. 🔄");
+                return false;
+            }
+
+            // Get PR status/checks
+            var status = await _github.Repository.Status.GetAll(_repoOwner, _repoName, pullRequest.Head.Sha);
+            
+            // If there are any status checks and they're not all successful, don't merge
+            if (status.Any() && status.Any(s => s.State != CommitState.Success))
+            {
+                var failedChecks = string.Join(", ", status.Where(s => s.State != CommitState.Success).Select(s => s.Context));
+                await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                    $"[FROM THOR]\n\nCannot auto-merge: The following checks are not passing: {failedChecks}");
+                return false;
+            }
+
+            // Get required reviews
+            var requiredReviews = await _github.Repository.Branch.GetProtection(_repoOwner, _repoName, pullRequest.Base.Ref);
+            
+            if (requiredReviews?.RequiredPullRequestReviews != null)
+            {
+                var reviews = await _github.PullRequest.Review.GetAll(_repoOwner, _repoName, pullRequest.Number);
+                var approvalCount = reviews.Count(r => r.State == PullRequestReviewState.Approved);
+                
+                if (approvalCount < requiredReviews.RequiredPullRequestReviews.RequiredApprovingReviewCount)
+                {
+                    await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                        "[FROM THOR]\n\nCannot auto-merge: Pull request requires additional approvals. 🔄");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking merge status: {ex.Message}");
+            await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
+                $"[FROM THOR]\n\nError checking merge status: {ex.Message}");
+            return false;
+        }
     }
 
     private async Task CreateFollowUpIssue(Issue completedIssue)
