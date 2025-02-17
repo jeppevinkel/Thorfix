@@ -66,7 +66,7 @@ public class GithubTools
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
-                new NewPullRequest(_issue.Title, _branchName, "master")
+                new NewPullRequest(_issue.Title, _branchName.Replace("origin/", ""), "master")
                 {
                     Body = $"Fixes #{_issue.Number}"
                 });
