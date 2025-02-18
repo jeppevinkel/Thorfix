@@ -137,7 +137,7 @@ public class Thorfix
         {
             Console.WriteLine(trackingBranch.FriendlyName);
 
-            branchName = $"thorfix/{issue.Number}-{trackingBranch.FriendlyName.Replace("origin/", "")}";
+            branchName = trackingBranch.FriendlyName.Replace("origin/", "");
 
             thorfixBranch = repository.Head;
             repository.Branches.Update(thorfixBranch, b => b.TrackedBranch = trackingBranch.CanonicalName);
