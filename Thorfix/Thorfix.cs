@@ -394,11 +394,13 @@ public class Thorfix
                             completionComment.AppendLine("<details>");
                             completionComment.AppendLine("<summary>LLM Conversation History</summary>");
                             completionComment.AppendLine();
+                            completionComment.AppendLine("```bash");
                             foreach (var message in _messageHistory)
                             {
                                 completionComment.AppendLine(message);
                                 completionComment.AppendLine();
                             }
+                            completionComment.AppendLine("```");
                             completionComment.AppendLine("</details>");
 
                             await githubTools.IssueAddComment(completionComment.ToString());
