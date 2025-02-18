@@ -10,6 +10,8 @@ public class FileSystemTools
     {
     }
 
+    private const int MaxFileContentSize = 50000; // Limit file content to 50KB
+
     [Function("Reads a file from the filesystem")]
     public async Task<ToolResult> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
@@ -22,6 +24,16 @@ public class FileSystemTools
 
         try
         {
+            var fileInfo = new FileInfo(filePath);
+            if (fileInfo.Length > MaxFileContentSize)
+            {
+                // For large files, read first part and indicate truncation
+                using var stream = new StreamReader(filePath);
+                var content = new char[MaxFileContentSize];
+                await stream.ReadBlockAsync(content, 0, MaxFileContentSize);
+                return new ToolResult(new string(content) + $"\n\n[File truncated, total size: {fileInfo.Length} bytes]");
+            }
+
             return new (await File.ReadAllTextAsync(filePath));
         }
         catch (Exception e)
@@ -39,8 +51,14 @@ public class FileSystemTools
     [Function("List all files in the repository")]
     public Task<ToolResult> ListFiles()
     {
+        var excludedPaths = new[] { "bin", "obj", "node_modules", ".git", ".vs" };
+        var excludedExtensions = new[] { ".exe", ".dll", ".pdb", ".cache", ".user" };
+        
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories)
+            .Where(file => !excludedPaths.Any(path => file.Contains($"/{path}/") || file.Contains($"\\{path}\\")) &&
+                          !excludedExtensions.Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
             .Select(it => it.Replace(RootDirectory.FullName, ""));
+        
         return Task.FromResult(new ToolResult(string.Join("\n", files)));
     }
 
