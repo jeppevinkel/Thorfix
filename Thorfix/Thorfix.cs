@@ -684,8 +684,8 @@ Where the numbers after @@ - represent the line numbers in the original file and
         {
             var fileSystemTools = new FileSystemTools();
             ToolResult allFiles = await fileSystemTools.ListFiles();
-            var relevantFiles =  allFiles.Response.Split('\n').Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"))
-                .ToList();
+            // var relevantFiles =  allFiles.Response.Split('\n').Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"))
+                // .ToList();
 
             // Let Claude analyze the codebase and create a new issue
             var messages = new List<Message>
@@ -693,7 +693,8 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 new(RoleType.User,
                     "You are a software development bot. Your task is to create a new issue for improving the codebase.\n\n" +
                     "Using the file system tools available to you (ListFiles and ReadFile), analyze the codebase and suggest " +
-                    "the next most important improvement. This could be:\n" +
+                    "the next most important improvement.\n" +
+                    "Remember to take the readme file into consideration for the scope of the project. This could be:\n" +
                     "- New functionality\n" +
                     "- Improvements to existing code\n" +
                     "- Better error handling\n" +
@@ -705,7 +706,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
                     "2. A detailed description of what needs to be done and why it's important\n" +
                     "3. The first line of your response should be the title of the issue, with the description on subsequent lines\n" +
                     "4. Just these two items - no other text or explanations\n\n" +
-                    "Available files:\n" + string.Join("\n", relevantFiles) + "\n\n" +
+                    "Available files:\n" + allFiles.Response + "\n\n" +
                     "Use the tools to read and analyze files as needed.")
             };
 
