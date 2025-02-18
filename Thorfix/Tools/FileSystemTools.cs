@@ -9,9 +9,7 @@ public class FileSystemTools
     public FileSystemTools()
     {
     }
-
-    private const int MaxFileContentSize = 50000; // Limit file content to 50KB
-
+    
     [Function("Reads a file from the filesystem")]
     public async Task<ToolResult> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
@@ -24,16 +22,6 @@ public class FileSystemTools
 
         try
         {
-            var fileInfo = new FileInfo(filePath);
-            if (fileInfo.Length > MaxFileContentSize)
-            {
-                // For large files, read first part and indicate truncation
-                using var stream = new StreamReader(filePath);
-                var content = new char[MaxFileContentSize];
-                await stream.ReadBlockAsync(content, 0, MaxFileContentSize);
-                return new ToolResult(new string(content) + $"\n\n[File truncated, total size: {fileInfo.Length} bytes]");
-            }
-
             return new (await File.ReadAllTextAsync(filePath));
         }
         catch (Exception e)
