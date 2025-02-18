@@ -62,7 +62,7 @@ public class GithubTools
     [Function("Converts the current issue into a pull request that targets the working branch")]
     public async Task<ToolResult> ConvertIssueToPullRequest()
     {
-        Console.WriteLine("Convert issue to pull request");
+        Console.WriteLine($"Convert issue to pull request ({_branchName})");
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
