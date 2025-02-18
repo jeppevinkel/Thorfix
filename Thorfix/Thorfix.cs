@@ -394,11 +394,13 @@ public class Thorfix
                             completionComment.AppendLine("<details>");
                             completionComment.AppendLine("<summary>LLM Conversation History</summary>");
                             completionComment.AppendLine();
+                            completionComment.AppendLine("```bash");
                             foreach (var message in _messageHistory)
                             {
                                 completionComment.AppendLine(message);
                                 completionComment.AppendLine();
                             }
+                            completionComment.AppendLine("```");
                             completionComment.AppendLine("</details>");
 
                             await githubTools.IssueAddComment(completionComment.ToString());
@@ -527,22 +529,39 @@ public class Thorfix
         sb.AppendLine($"Issue Title: {issue.Title}");
         sb.AppendLine($"Issue Description: {issue.Body}");
 
-        // Get all comments on the issue
-        var comments = await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number);
+        // Get a limited number of most recent relevant comments to reduce context size
+        var comments = (await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number))
+            .Where(c => !c.Body.Contains("LLM Conversation History")) // Exclude conversation history comments
+            .TakeLast(3); // Only include last 3 comments
+
         if (comments.Any())
         {
-            sb.AppendLine("\nPrevious conversation history:");
+            sb.AppendLine("\nRecent conversation history:");
             foreach (var comment in comments)
             {
+                string trimmedBody = comment.Body;
                 if (comment.Body.Contains("[FROM THOR]"))
                 {
                     // Remove the [FROM THOR] marker and add as assistant message
-                    sb.AppendLine("Assistant: " +
-                                  comment.Body.Replace("[FROM THOR]\n\n", "").Replace("[FROM THOR]", "").Trim());
+                    trimmedBody = comment.Body.Replace("[FROM THOR]\n\n", "").Replace("[FROM THOR]", "").Trim();
+                    
+                    // For assistant messages, only include the main content, not the details
+                    var detailsIndex = trimmedBody.IndexOf("<details>", StringComparison.OrdinalIgnoreCase);
+                    if (detailsIndex >= 0)
+                    {
+                        trimmedBody = trimmedBody.Substring(0, detailsIndex).Trim();
+                    }
+                    
+                    sb.AppendLine("Assistant: " + trimmedBody);
                 }
                 else
                 {
-                    sb.AppendLine("User: " + comment.Body.Trim());
+                    // For user comments, limit to first 500 characters if too long
+                    if (trimmedBody.Length > 500)
+                    {
+                        trimmedBody = trimmedBody.Substring(0, 500) + "...";
+                    }
+                    sb.AppendLine("User: " + trimmedBody.Trim());
                 }
 
                 sb.AppendLine(); // Add blank line between messages
