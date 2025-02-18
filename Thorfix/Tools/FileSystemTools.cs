@@ -9,7 +9,7 @@ public class FileSystemTools
     public FileSystemTools()
     {
     }
-
+    
     [Function("Reads a file from the filesystem")]
     public async Task<ToolResult> ReadFile([FunctionParameter("Path to the file", true)] string filePath)
     {
@@ -39,8 +39,14 @@ public class FileSystemTools
     [Function("List all files in the repository")]
     public Task<ToolResult> ListFiles()
     {
+        var excludedPaths = new[] { "bin", "obj", "node_modules", ".git", ".vs" };
+        var excludedExtensions = new[] { ".exe", ".dll", ".pdb", ".cache", ".user" };
+        
         var files = Directory.GetFiles(RootDirectory.FullName, "*", SearchOption.AllDirectories)
+            .Where(file => !excludedPaths.Any(path => file.Contains($"/{path}/") || file.Contains($"\\{path}\\")) &&
+                          !excludedExtensions.Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
             .Select(it => it.Replace(RootDirectory.FullName, ""));
+        
         return Task.FromResult(new ToolResult(string.Join("\n", files)));
     }
 
