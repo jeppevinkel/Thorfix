@@ -49,8 +49,7 @@ public class GithubTools
 
         try
         {
-            await _client.Issue.Comment.Create(_repoOwner, _repoName, _issue.Number,
-                $"[FROM THOR]\n\n{comment}");
+            await _client.Issue.Comment.Create(_repoOwner, _repoName, _issue.Number, comment);
             return new ToolResult("Comment added successfully");
         }
         catch (Exception e)

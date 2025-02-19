@@ -26,6 +26,24 @@ public class Thorfix
     private readonly bool _continuousMode;
     private readonly int _prMergeDelayMinutes;
     private readonly List<string> _messageHistory;
+    private long? _thorId;
+
+    public async Task<long> GetThorId()
+    {
+        if (_thorId is not null)
+        {
+            return _thorId.Value;
+        }
+        User? currentUser = await _github.User.Current();
+
+        if (currentUser is null)
+        {
+            throw new Exception("Failed to get current user");
+        }
+        
+        _thorId = currentUser.Id;
+        return currentUser.Id;
+    }
 
     public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName, bool continuousMode = false)
     {
@@ -66,7 +84,7 @@ public class Thorfix
                     var comments = await _github.Issue.Comment.GetAllForIssue(_repoOwner, _repoName, issue.Number);
                     IssueComment? lastComment = comments?.LastOrDefault();
 
-                    if (lastComment?.Body.Contains("[FROM THOR]") ?? false)
+                    if (!_continuousMode && lastComment?.User.Id == await GetThorId())
                     {
                         continue;
                     }
@@ -345,7 +363,7 @@ public class Thorfix
                             {
                                 // Add a comment about automatic merging
                                 await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
-                                    "[FROM THOR]\n\nContinuous mode: Attempting automatic merge of this pull request. 🔄");
+                                    "Continuous mode: Attempting automatic merge of this pull request. 🔄");
                                 
                                 // Add a configurable delay to account for potential build pipelines
                                 await Task.Delay(TimeSpan.FromMinutes(_prMergeDelayMinutes));
@@ -376,7 +394,7 @@ public class Thorfix
                                     await _github.Git.Reference.Delete(_repoOwner, _repoName, $"heads/{fullPullRequest.Head.Ref}");
 
                                     await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
-                                        "[FROM THOR]\n\nContinuous mode: Successfully merged pull request and closed issue. ✅");
+                                        "Continuous mode: Successfully merged pull request and closed issue. ✅");
                                     
                                     // Add the thordone label
                                     await _github.Issue.Labels.AddToIssue(_repoOwner, _repoName, issue.Number, new[] { "thordone" });
@@ -385,7 +403,7 @@ public class Thorfix
                             catch (Exception ex)
                             {
                                 await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
-                                    $"[FROM THOR]\n\nContinuous mode: Failed to auto-merge pull request. ⚠️\nError: {ex.Message}\n\nPlease review and merge manually.");
+                                    $"Continuous mode: Failed to auto-merge pull request. ⚠️\nError: {ex.Message}\n\nPlease review and merge manually.");
                             }
                         }
                         else
@@ -543,10 +561,9 @@ public class Thorfix
             foreach (var comment in comments)
             {
                 string trimmedBody = comment.Body;
-                if (comment.Body.Contains("[FROM THOR]"))
+                if (comment.User.Id == await GetThorId())
                 {
-                    // Remove the [FROM THOR] marker and add as assistant message
-                    trimmedBody = comment.Body.Replace("[FROM THOR]\n\n", "").Replace("[FROM THOR]", "").Trim();
+                    trimmedBody = comment.Body.Trim();
                     
                     // For assistant messages, only include the main content, not the details
                     var detailsIndex = trimmedBody.IndexOf("<details>", StringComparison.OrdinalIgnoreCase);
@@ -630,7 +647,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             if (pullRequest.Mergeable != true)
             {
                 await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
-                    "[FROM THOR]\n\nCannot auto-merge: Pull request has conflicts that need to be resolved manually. 🔄");
+                    "Cannot auto-merge: Pull request has conflicts that need to be resolved manually. 🔄");
                 return false;
             }
 
@@ -642,7 +659,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             {
                 var failedChecks = string.Join(", ", status.Where(s => s.State != CommitState.Success).Select(s => s.Context));
                 await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
-                    $"[FROM THOR]\n\nCannot auto-merge: The following checks are not passing: {failedChecks}");
+                    $"Cannot auto-merge: The following checks are not passing: {failedChecks}");
                 return false;
             }
 
@@ -660,7 +677,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
                     if (approvalCount < requiredReviews.RequiredPullRequestReviews.RequiredApprovingReviewCount)
                     {
                         await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
-                            "[FROM THOR]\n\nCannot auto-merge: Pull request requires additional approvals. 🔄");
+                            "Cannot auto-merge: Pull request requires additional approvals. 🔄");
                         return false;
                     }
                 }
@@ -676,7 +693,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         {
             Console.WriteLine($"Error checking merge status: {ex.Message}");
             await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
-                $"[FROM THOR]\n\nError checking merge status: {ex.Message}");
+                $"Error checking merge status: {ex.Message}");
             return false;
         }
     }
@@ -765,7 +782,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             if (completedIssue is not null)
             {
                 await _github.Issue.Comment.Create(_repoOwner, _repoName, completedIssue.Number,
-                    $"[FROM THOR]\n\nIn continuous mode: Created follow-up issue #{createdIssue.Number} for further improvements. 🔄");
+                    $"In continuous mode: Created follow-up issue #{createdIssue.Number} for further improvements. 🔄");
             }
         }
         catch (Exception ex)
