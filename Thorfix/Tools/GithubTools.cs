@@ -66,7 +66,7 @@ public class GithubTools
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
-                new NewPullRequest(_issue.Title, _branchName.Replace("origin/", ""), GetDefaultBranch(_repository))
+                new NewPullRequest(_issue.Title, _branchName.Replace("origin/", ""), await GetDefaultBranch(_client, _repoOwner, _repoName))
                 {
                     Body = $"Fixes #{_issue.Number}"
                 });
@@ -172,12 +172,9 @@ public class GithubTools
         }
     }
 
-    public static string GetDefaultBranch(Repository repository)
+    public static async Task<string> GetDefaultBranch(GitHubClient github, string owner, string repoName)
     {
-        var mainBranchName = repository.Branches.Select(x => x.FriendlyName)
-            .FirstOrDefault(x => new[] { "main", "master", "develop" }.Contains(x.ToLower())) ?? "main";
-        mainBranchName = mainBranchName.Split('/', StringSplitOptions.RemoveEmptyEntries).Last();
-
-        return mainBranchName;
+        Octokit.Repository? repo = await github.Repository.Get(owner, repoName);
+        return repo.DefaultBranch;
     }
 }

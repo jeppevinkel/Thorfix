@@ -161,7 +161,7 @@ public class Thorfix
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
             branchName = $"thorfix/{issue.Number}-{newBranchName}";
-            thorfixBranch = CreateRemoteBranch(repository, branchName, GithubTools.GetDefaultBranch(repository));
+            thorfixBranch = CreateRemoteBranch(repository, branchName, await GithubTools.GetDefaultBranch(_github, _repoOwner, _repoName));
             Commands.Checkout(repository, thorfixBranch);
         }
 
