@@ -129,8 +129,8 @@ public class GithubTools
             StageChanges(_repository);
             
             commitMessage += $"\n#{_issue.Number}";
-            _repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
-                new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
+            _repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jopodev.com", DateTimeOffset.Now),
+                new Signature("Thorfix", "thorfix@jopodev.com", DateTimeOffset.Now));
 
             PushChanges(_repository, _credentials, _branch);
 

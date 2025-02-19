@@ -152,7 +152,7 @@ public class Thorfix
 
             MergeResult mergeResult = Commands.Pull(
                 repository,
-                new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
+                new Signature("Thorfix", "thorfix@jopodev.com", DateTimeOffset.Now),
                 pullOptions
             );
         }
@@ -492,8 +492,8 @@ public class Thorfix
     {
         try
         {
-            repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now),
-                new Signature("Thorfix", "thorfix@jeppdev.com", DateTimeOffset.Now));
+            repository.Commit(commitMessage, new Signature("Thorfix", "thorfix@jopodev.com", DateTimeOffset.Now),
+                new Signature("Thorfix", "thorfix@jopodev.com", DateTimeOffset.Now));
         }
         catch (Exception e)
         {
