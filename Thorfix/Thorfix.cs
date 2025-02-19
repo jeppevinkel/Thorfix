@@ -34,18 +34,20 @@ public class Thorfix
         {
             return _thorId.Value;
         }
+
         User? currentUser = await _github.User.Current();
 
         if (currentUser is null)
         {
             throw new Exception("Failed to get current user");
         }
-        
+
         _thorId = currentUser.Id;
         return currentUser.Id;
     }
 
-    public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName, bool continuousMode = false)
+    public Thorfix(string githubToken, string claudeApiKey, string repoOwner, string repoName,
+        bool continuousMode = false)
     {
         _github = new GitHubClient(new ProductHeaderValue("IssueBot"))
         {
@@ -57,7 +59,10 @@ public class Thorfix
         _repoOwner = repoOwner;
         _repoName = repoName;
         _continuousMode = continuousMode;
-        _prMergeDelayMinutes = int.TryParse(Environment.GetEnvironmentVariable("THORFIX_PR_MERGE_DELAY_MINUTES"), out int delay) ? delay : 6;
+        _prMergeDelayMinutes =
+            int.TryParse(Environment.GetEnvironmentVariable("THORFIX_PR_MERGE_DELAY_MINUTES"), out int delay)
+                ? delay
+                : 6;
 
         _usernamePasswordCredentials = new UsernamePasswordCredentials()
         {
@@ -102,7 +107,7 @@ public class Thorfix
                         }
 
                         await HandleIssue(issue);
-                        
+
                         if (_continuousMode)
                         {
                             // Create a follow-up issue to continue development
@@ -123,14 +128,16 @@ public class Thorfix
                 // Create a new issue if no applicable issues were found
                 if (!handledIssue && _continuousMode)
                 {
-                    using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
+                    using var repository = new Repository(Repository.Clone(
+                        $"https://github.com/{_repoOwner}/{_repoName}.git",
                         $"/app/repository"));
                     await CreateFollowUpIssue();
                     Directory.Delete($"/app/repository", true);
                     await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
                 }
 
-                await Task.Delay(_continuousMode ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(5), cancellationToken);
+                await Task.Delay(_continuousMode ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(5),
+                    cancellationToken);
             }
             catch (Exception ex)
             {
@@ -179,7 +186,8 @@ public class Thorfix
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
             branchName = $"thorfix/{issue.Number}-{newBranchName}";
-            thorfixBranch = CreateRemoteBranch(repository, branchName, await GithubTools.GetDefaultBranch(_github, _repoOwner, _repoName));
+            thorfixBranch = CreateRemoteBranch(repository, branchName,
+                await GithubTools.GetDefaultBranch(_github, _repoOwner, _repoName));
             Commands.Checkout(repository, thorfixBranch);
         }
 
@@ -214,102 +222,105 @@ public class Thorfix
             PromptCaching = PromptCacheType.Messages | PromptCacheType.Tools
         };
 
-        MessageResponse? res;
-        bool isComplete = false;
-        int iterations = 0;
-
-        while (!isComplete || iterations++ > 10)
+        try
         {
-            res = await GetClaudeMessageAsync(parameters);
-            parameters.Messages.Add(res.Message);
+            MessageResponse? res;
+            bool isComplete = false;
+            int iterations = 0;
 
-            // Process tool calls
-            foreach (Function? toolCall in res.ToolCalls)
+            while (!isComplete || iterations++ > 10)
             {
-                var result = await toolCall.InvokeAsync<ToolResult>();
-                _messageHistory.Add($"Tool Call: {toolCall.Name}\nParameters: {toolCall.Arguments}\nResult: {result.Response}");
-                parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
-            }
+                res = await GetClaudeMessageAsync(parameters);
+                parameters.Messages.Add(res.Message);
 
-            if (res.ToolCalls?.Count == 0)
-            {
-                // No more tool calls - let's check if the changes satisfy the requirements
-                var changes = repository.Diff.Compare<TreeChanges>();
-
-                // print number of changes and changed files
-                Console.WriteLine($"Number of changes: {changes.Count()}");
-                foreach (TreeEntryChanges? change in changes)
+                // Process tool calls
+                foreach (Function? toolCall in res.ToolCalls)
                 {
-                    Console.WriteLine($"{change.Status} {change.Path}");
+                    var result = await toolCall.InvokeAsync<ToolResult>();
+                    _messageHistory.Add(
+                        $"Tool Call: {toolCall.Name}\nParameters: {toolCall.Arguments}\nResult: {result.Response}");
+                    parameters.Messages.Add(new Message(toolCall, result.Response, result.IsError));
                 }
 
-                // Test if the code can be built
-                if (changes.Any())
+                if (res.ToolCalls?.Count == 0)
                 {
-                    Console.WriteLine("Testing if code can be built...");
-                    try
+                    // No more tool calls - let's check if the changes satisfy the requirements
+                    var changes = repository.Diff.Compare<TreeChanges>();
+
+                    // print number of changes and changed files
+                    Console.WriteLine($"Number of changes: {changes.Count()}");
+                    foreach (TreeEntryChanges? change in changes)
                     {
-                        var buildProcess = new System.Diagnostics.Process
+                        Console.WriteLine($"{change.Status} {change.Path}");
+                    }
+
+                    // Test if the code can be built
+                    if (changes.Any())
+                    {
+                        Console.WriteLine("Testing if code can be built...");
+                        try
                         {
-                            StartInfo = new System.Diagnostics.ProcessStartInfo
+                            var buildProcess = new System.Diagnostics.Process
                             {
-                                FileName = "dotnet",
-                                Arguments = "build",
-                                WorkingDirectory = $"/app/repository",
-                                RedirectStandardOutput = true,
-                                RedirectStandardError = true,
-                                UseShellExecute = false,
-                                CreateNoWindow = true
+                                StartInfo = new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = "dotnet",
+                                    Arguments = "build",
+                                    WorkingDirectory = $"/app/repository",
+                                    RedirectStandardOutput = true,
+                                    RedirectStandardError = true,
+                                    UseShellExecute = false,
+                                    CreateNoWindow = true
+                                }
+                            };
+
+                            buildProcess.Start();
+                            var output = await buildProcess.StandardOutput.ReadToEndAsync();
+                            var error = await buildProcess.StandardError.ReadToEndAsync();
+                            await buildProcess.WaitForExitAsync();
+
+                            if (buildProcess.ExitCode != 0)
+                            {
+                                Console.WriteLine("Build failed!");
+                                Console.WriteLine($"Build output: {output}");
+                                Console.WriteLine($"Build errors: {error}");
+
+                                var outputText = !string.IsNullOrWhiteSpace(error) ? error : output;
+
+                                // Add build failure comment
+                                var failureComment = new StringBuilder();
+                                failureComment.AppendLine("⚠️ Build Failure");
+                                failureComment.AppendLine();
+                                failureComment.AppendLine("The changes I made resulted in build failures:");
+                                failureComment.AppendLine();
+                                failureComment.AppendLine("```");
+                                failureComment.AppendLine(outputText);
+                                failureComment.AppendLine("```");
+                                failureComment.AppendLine();
+                                failureComment.AppendLine("I'll review and fix these build errors before proceeding.");
+
+                                await githubTools.IssueAddComment(failureComment.ToString());
+
+                                // We have changes - let's verify them
+                                parameters.Messages.Add(new Message(RoleType.User,
+                                    $"The build failed with the following output: {outputText}"));
+
+                                // Reset changes and continue the loop
+                                // repository.Reset(ResetMode.Hard);
+                                continue;
                             }
-                        };
 
-                        buildProcess.Start();
-                        var output = await buildProcess.StandardOutput.ReadToEndAsync();
-                        var error = await buildProcess.StandardError.ReadToEndAsync();
-                        await buildProcess.WaitForExitAsync();
-
-                        if (buildProcess.ExitCode != 0)
-                        {
-                            Console.WriteLine("Build failed!");
-                            Console.WriteLine($"Build output: {output}");
-                            Console.WriteLine($"Build errors: {error}");
-
-                            var outputText = !string.IsNullOrWhiteSpace(error) ? error : output;
-
-                            // Add build failure comment
-                            var failureComment = new StringBuilder();
-                            failureComment.AppendLine("⚠️ Build Failure");
-                            failureComment.AppendLine();
-                            failureComment.AppendLine("The changes I made resulted in build failures:");
-                            failureComment.AppendLine();
-                            failureComment.AppendLine("```");
-                            failureComment.AppendLine(outputText);
-                            failureComment.AppendLine("```");
-                            failureComment.AppendLine();
-                            failureComment.AppendLine("I'll review and fix these build errors before proceeding.");
-
-                            await githubTools.IssueAddComment(failureComment.ToString());
-
-                            // We have changes - let's verify them
-                            parameters.Messages.Add(new Message(RoleType.User,
-                                $"The build failed with the following output: {outputText}"));
-
-                            // Reset changes and continue the loop
-                            // repository.Reset(ResetMode.Hard);
-                            continue;
+                            Console.WriteLine("Build successful!");
                         }
-
-                        Console.WriteLine("Build successful!");
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error during build test: {ex.Message}");
+                            throw;
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error during build test: {ex.Message}");
-                        throw;
-                    }
-                }
 
-                // if (changes.Any())
-                // {
+                    // if (changes.Any())
+                    // {
                     // We have changes - let's verify them
                     parameters.Messages.Add(new Message(RoleType.User,
                         "Please review the changes made and confirm if they complete the requirements from the original issue. " +
@@ -343,7 +354,8 @@ public class Thorfix
                         var convertResult = await githubTools.ConvertIssueToPullRequest();
                         if (convertResult.IsError)
                         {
-                            await githubTools.IssueAddComment($"Failed to create pull request: {convertResult.Response}");
+                            await githubTools.IssueAddComment(
+                                $"Failed to create pull request: {convertResult.Response}");
                             continue;
                         }
 
@@ -356,7 +368,7 @@ public class Thorfix
                         }
 
                         var prNumber = int.Parse(prNumberMatch.Groups[1].Value);
-                        
+
                         if (_continuousMode)
                         {
                             try
@@ -364,26 +376,29 @@ public class Thorfix
                                 // Add a comment about automatic merging
                                 await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
                                     "Continuous mode: Attempting automatic merge of this pull request. 🔄");
-                                
+
                                 // Add a configurable delay to account for potential build pipelines
                                 await Task.Delay(TimeSpan.FromMinutes(_prMergeDelayMinutes));
 
                                 // Get the full PR details needed for merge checks
-                                var fullPullRequest = await _github.PullRequest.Get(_repoOwner, _repoName, prNumber);
-                                
+                                var fullPullRequest =
+                                    await _github.PullRequest.Get(_repoOwner, _repoName, prNumber);
+
                                 if (await CanMergePullRequest(fullPullRequest))
                                 {
                                     // Create the merge
                                     var mergePullRequest = new MergePullRequest
                                     {
                                         CommitTitle = $"Thorfix: Auto-merge PR #{fullPullRequest.Number}",
-                                        CommitMessage = $"Auto-merged by Thorfix continuous mode\n\nResolves #{issue.Number}",
+                                        CommitMessage =
+                                            $"Auto-merged by Thorfix continuous mode\n\nResolves #{issue.Number}",
                                         MergeMethod = PullRequestMergeMethod.Merge
                                     };
 
                                     // Try to merge the pull request
-                                    await _github.PullRequest.Merge(_repoOwner, _repoName, prNumber, mergePullRequest);
-                                    
+                                    await _github.PullRequest.Merge(_repoOwner, _repoName, prNumber,
+                                        mergePullRequest);
+
                                     // Close the issue if merge was successful
                                     await _github.Issue.Update(_repoOwner, _repoName, issue.Number, new IssueUpdate
                                     {
@@ -391,13 +406,15 @@ public class Thorfix
                                     });
 
                                     // Delete the old branch
-                                    await _github.Git.Reference.Delete(_repoOwner, _repoName, $"heads/{fullPullRequest.Head.Ref}");
+                                    await _github.Git.Reference.Delete(_repoOwner, _repoName,
+                                        $"heads/{fullPullRequest.Head.Ref}");
 
                                     await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
                                         "Continuous mode: Successfully merged pull request and closed issue. ✅");
-                                    
+
                                     // Add the thordone label
-                                    await _github.Issue.Labels.AddToIssue(_repoOwner, _repoName, issue.Number, new[] { "thordone" });
+                                    await _github.Issue.Labels.AddToIssue(_repoOwner, _repoName, issue.Number,
+                                        new[] {"thordone"});
                                 }
                             }
                             catch (Exception ex)
@@ -421,6 +438,7 @@ public class Thorfix
                                 completionComment.AppendLine(message);
                                 completionComment.AppendLine();
                             }
+
                             completionComment.AppendLine("```");
                             completionComment.AppendLine("</details>");
 
@@ -429,9 +447,9 @@ public class Thorfix
                     }
                     else
                     {
-                                        // Add the message history from this run to our tracking
+                        // Add the message history from this run to our tracking
                         _messageHistory.Add($"Assistant: {verificationResponse.Message}");
-                        
+
                         // Add a detailed comment explaining why the changes don't meet requirements
                         var commentBuilder = new StringBuilder();
                         commentBuilder.AppendLine("⚠️ Code Review Results: Requirements Not Yet Met");
@@ -454,17 +472,29 @@ public class Thorfix
                         commentBuilder.AppendLine("I'll continue iterating until all requirements are met.");
 
                         await githubTools.IssueAddComment(commentBuilder.ToString());
-                        
+
                         parameters.Messages.Add(new Message(RoleType.User,
                             "All requirements were not yet met. Continue working on the code."));
 
                         // Reset the changes since we're not done
                         // repository.Reset(ResetMode.Hard);
                     }
-                // }
-            }
+                    // }
+                }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+                await Task.Delay(TimeSpan.FromSeconds(3));
+            }
+        }
+        catch
+        {
+            // Emergency push
+            var changes = repository.Diff.Compare<TreeChanges>();
+            if (changes.Count <= 0) throw;
+            GithubTools.StageChanges(repository);
+            CommitChanges(repository, $"Thorfix: #{issue.Number}");
+            GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
+
+            throw;
         }
     }
 
@@ -483,8 +513,9 @@ public class Thorfix
             }
         }
 
-        var triesLeft = 3;
-        while (triesLeft-- > 0)
+        var maxTries = 3;
+        var tries = 0;
+        while (tries++ < maxTries)
         {
             try
             {
@@ -493,12 +524,12 @@ public class Thorfix
             catch (HttpRequestException requestException)
             {
                 if ((int) requestException.StatusCode! != (int) AnthropicErrorCode.OverloadedError) throw;
-                if (triesLeft <= 0)
+                if (tries >= 3)
                 {
                     throw;
                 }
-                await Task.Delay(TimeSpan.FromSeconds(1));
-                return await _claude.Messages.GetClaudeMessageAsync(parameters);
+
+                await Task.Delay(TimeSpan.FromSeconds(10 + tries * 10));
             }
         }
 
@@ -564,14 +595,14 @@ public class Thorfix
                 if (comment.User.Id == await GetThorId())
                 {
                     trimmedBody = comment.Body.Trim();
-                    
+
                     // For assistant messages, only include the main content, not the details
                     var detailsIndex = trimmedBody.IndexOf("<details>", StringComparison.OrdinalIgnoreCase);
                     if (detailsIndex >= 0)
                     {
                         trimmedBody = trimmedBody.Substring(0, detailsIndex).Trim();
                     }
-                    
+
                     sb.AppendLine("Assistant: " + trimmedBody);
                 }
                 else
@@ -581,6 +612,7 @@ public class Thorfix
                     {
                         trimmedBody = trimmedBody.Substring(0, 500) + "...";
                     }
+
                     sb.AppendLine("User: " + trimmedBody.Trim());
                 }
 
@@ -653,11 +685,12 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
             // Get PR status/checks
             var status = await _github.Repository.Status.GetAll(_repoOwner, _repoName, pullRequest.Head.Sha);
-            
+
             // If there are any status checks and they're not all successful, don't merge
             if (status.Any() && status.Any(s => s.State != CommitState.Success))
             {
-                var failedChecks = string.Join(", ", status.Where(s => s.State != CommitState.Success).Select(s => s.Context));
+                var failedChecks = string.Join(", ",
+                    status.Where(s => s.State != CommitState.Success).Select(s => s.Context));
                 await _github.Issue.Comment.Create(_repoOwner, _repoName, pullRequest.Number,
                     $"Cannot auto-merge: The following checks are not passing: {failedChecks}");
                 return false;
@@ -705,7 +738,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             var fileSystemTools = new FileSystemTools();
             ToolResult allFiles = await fileSystemTools.ListFiles();
             // var relevantFiles =  allFiles.Response.Split('\n').Where(f => !f.Contains("/obj/") && !f.Contains("/bin/"))
-                // .ToList();
+            // .ToList();
 
             // Let Claude analyze the codebase and create a new issue
             var messages = new List<Message>
@@ -748,7 +781,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
 
             MessageResponse res = await GetClaudeMessageAsync(parameters);
             messages.Add(res.Message);
-            
+
             // Process any tool calls first
             while (res.ToolCalls?.Count > 0)
             {
@@ -757,13 +790,13 @@ Where the numbers after @@ - represent the line numbers in the original file and
                     var result = await toolCall.InvokeAsync<ToolResult>();
                     messages.Add(new Message(toolCall, result.Response, result.IsError));
                 }
-                
+
                 res = await GetClaudeMessageAsync(parameters);
                 messages.Add(res.Message);
             }
-            
+
             var suggestionLines = res.Message.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             // First line is title, rest is description
             var newIssueTitle = suggestionLines[0].Trim();
             var newIssueBody = string.Join("\n", suggestionLines.Skip(1)).Trim();
@@ -772,12 +805,12 @@ Where the numbers after @@ - represent the line numbers in the original file and
             {
                 Body = newIssueBody
             };
-            
+
             // Add the thorfix label to the new issue
             newIssue.Labels.Add("thorfix");
-            
+
             var createdIssue = await _github.Issue.Create(_repoOwner, _repoName, newIssue);
-            
+
             // Add a comment to the completed issue linking to the follow-up
             if (completedIssue is not null)
             {
