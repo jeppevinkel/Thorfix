@@ -485,13 +485,13 @@ public class Thorfix
                 await Task.Delay(TimeSpan.FromSeconds(3));
             }
         }
-        catch
+        catch (Exception e)
         {
             // Emergency push
             var changes = repository.Diff.Compare<TreeChanges>();
             if (changes.Count <= 0) throw;
             GithubTools.StageChanges(repository);
-            CommitChanges(repository, $"Thorfix: #{issue.Number}");
+            CommitChanges(repository, $"Thorfix: Emergency commit #{issue.Number}\n{e.Message}");
             GithubTools.PushChanges(repository, _usernamePasswordCredentials, thorfixBranch);
 
             throw;
