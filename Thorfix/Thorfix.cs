@@ -78,9 +78,9 @@ public class Thorfix
                     Console.WriteLine($"Processing #{issue.Number}");
                     try
                     {
-                        if (Directory.Exists($"/app/repository/{_repoName}"))
+                        if (Directory.Exists($"/app/repository"))
                         {
-                            Directory.Delete($"/app/repository/{_repoName}", true);
+                            Directory.Delete($"/app/repository", true);
                         }
 
                         await HandleIssue(issue);
@@ -97,7 +97,7 @@ public class Thorfix
                     }
                     finally
                     {
-                        Directory.Delete($"/app/repository/{_repoName}", true);
+                        Directory.Delete($"/app/repository", true);
                         Console.WriteLine($"Done with #{issue.Number}");
                     }
                 }
@@ -106,9 +106,9 @@ public class Thorfix
                 if (!handledIssue && _continuousMode)
                 {
                     using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
-                        $"/app/repository/{_repoName}"));
+                        $"/app/repository"));
                     await CreateFollowUpIssue();
-                    Directory.Delete($"/app/repository/{_repoName}", true);
+                    Directory.Delete($"/app/repository", true);
                     await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
                 }
 
@@ -125,7 +125,7 @@ public class Thorfix
     private async Task HandleIssue(Issue issue)
     {
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
-            $"/app/repository/{_repoName}"));
+            $"/app/repository"));
         Branch? thorfixBranch;
         Branch? trackingBranch =
             repository.Branches.FirstOrDefault(it =>
@@ -240,7 +240,7 @@ public class Thorfix
                             {
                                 FileName = "dotnet",
                                 Arguments = "build",
-                                WorkingDirectory = $"/app/repository/{_repoName}",
+                                WorkingDirectory = $"/app/repository",
                                 RedirectStandardOutput = true,
                                 RedirectStandardError = true,
                                 UseShellExecute = false,
