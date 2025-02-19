@@ -163,6 +163,7 @@ public class Thorfix
             branchName = $"thorfix/{issue.Number}-{newBranchName}";
             var mainBranchName = repository.Branches.Select(x => x.FriendlyName)
                 .FirstOrDefault(x => new[] { "main", "master", "develop" }.Contains(x.ToLower())) ?? "main";
+            mainBranchName = mainBranchName.Split('/', StringSplitOptions.RemoveEmptyEntries).Last();
             thorfixBranch = CreateRemoteBranch(repository, branchName, mainBranchName);
             Commands.Checkout(repository, thorfixBranch);
         }
