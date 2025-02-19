@@ -66,7 +66,7 @@ public class GithubTools
         try
         {
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
-                new NewPullRequest(_issue.Title, _branchName.Replace("origin/", ""), "master")
+                new NewPullRequest(_issue.Title, _branchName.Replace("origin/", ""), GetDefaultBranch(_repository))
                 {
                     Body = $"Fixes #{_issue.Number}"
                 });
@@ -170,5 +170,14 @@ public class GithubTools
         {
             Console.WriteLine("Exception:RepoActions:PushChanges " + e.Message);
         }
+    }
+
+    public static string GetDefaultBranch(Repository repository)
+    {
+        var mainBranchName = repository.Branches.Select(x => x.FriendlyName)
+            .FirstOrDefault(x => new[] { "main", "master", "develop" }.Contains(x.ToLower())) ?? "main";
+        mainBranchName = mainBranchName.Split('/', StringSplitOptions.RemoveEmptyEntries).Last();
+
+        return mainBranchName;
     }
 }
