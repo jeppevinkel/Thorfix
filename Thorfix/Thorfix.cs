@@ -373,8 +373,7 @@ public class Thorfix
                                     });
 
                                     // Delete the old branch
-                                    Console.WriteLine($"Deleting old branch {fullPullRequest.Head.Ref}");
-                                    await _github.Git.Reference.Delete(_repoOwner, _repoName, fullPullRequest.Head.Ref);
+                                    await _github.Git.Reference.Delete(_repoOwner, _repoName, $"heads/{fullPullRequest.Head.Ref}");
 
                                     await _github.Issue.Comment.Create(_repoOwner, _repoName, issue.Number,
                                         "[FROM THOR]\n\nContinuous mode: Successfully merged pull request and closed issue. ✅");
