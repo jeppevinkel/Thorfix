@@ -154,7 +154,7 @@ public class Thorfix
         Branch? thorfixBranch;
         Branch? trackingBranch =
             repository.Branches.FirstOrDefault(it =>
-                it.UpstreamBranchCanonicalName.Contains($"thorfix/{issue.Number}"));
+                it.UpstreamBranchCanonicalName.Contains($"thorfix/GH-{issue.Number}"));
 
         string? branchName;
 
@@ -185,7 +185,7 @@ public class Thorfix
         {
             Console.WriteLine("Creating branch.");
             var newBranchName = await GenerateBranchName(issue);
-            branchName = $"thorfix/{issue.Number}-{newBranchName}";
+            branchName = $"thorfix/GH-{issue.Number}-{newBranchName}";
             thorfixBranch = CreateRemoteBranch(repository, branchName,
                 await GithubTools.GetDefaultBranch(_github, _repoOwner, _repoName));
             Commands.Checkout(repository, thorfixBranch);
