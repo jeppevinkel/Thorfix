@@ -214,7 +214,7 @@ public class Thorfix
         var parameters = new MessageParameters
         {
             Messages = messages,
-            MaxTokens = 4048,
+            MaxTokens = 20000,
             Model = AnthropicModels.Claude37Sonnet,
             Stream = false,
             Temperature = 1.0m,
@@ -711,7 +711,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             var parameters = new MessageParameters
             {
                 Messages = messages,
-                MaxTokens = 4048,
+                MaxTokens = 20000,
                 Model = AnthropicModels.Claude37Sonnet,
                 Stream = false,
                 Temperature = 1.0m,
