@@ -211,15 +211,19 @@ public class Thorfix
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.CommitChanges)),
         };
 
-        var parameters = new MessageParameters()
+        var parameters = new MessageParameters
         {
             Messages = messages,
             MaxTokens = 4048,
-            Model = "claude-3-7-sonnet-latest",
+            Model = AnthropicModels.Claude37Sonnet,
             Stream = false,
             Temperature = 1.0m,
             Tools = tools,
-            PromptCaching = PromptCacheType.Messages | PromptCacheType.Tools
+            PromptCaching = PromptCacheType.Messages | PromptCacheType.Tools,
+            Thinking = new ThinkingParameters
+            {
+                BudgetTokens = 16000
+            }
         };
 
         try
@@ -594,7 +598,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         {
             Messages = messages,
             MaxTokens = 4048,
-            Model = "claude-3-7-sonnet-latest",
+            Model = AnthropicModels.Claude37Sonnet,
             Stream = false,
             Temperature = 1.0m,
         };
@@ -704,14 +708,18 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ReadFile))
             };
 
-            var parameters = new MessageParameters()
+            var parameters = new MessageParameters
             {
                 Messages = messages,
                 MaxTokens = 4048,
-                Model = "claude-3-7-sonnet-latest",
+                Model = AnthropicModels.Claude37Sonnet,
                 Stream = false,
                 Temperature = 1.0m,
-                Tools = tools
+                Tools = tools,
+                Thinking = new ThinkingParameters
+                {
+                    BudgetTokens = 16000
+                }
             };
 
             MessageResponse res = await GetClaudeMessageAsync(parameters);
