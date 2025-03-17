@@ -128,9 +128,14 @@ public class Thorfix
                 // Create a new issue if no applicable issues were found
                 if (!handledIssue && _continuousMode)
                 {
+                    var cloneOptions = new CloneOptions()
+                    {
+                        FetchOptions = {CredentialsProvider = (_, _, _) => _usernamePasswordCredentials},
+                    };
+
                     using var repository = new Repository(Repository.Clone(
                         $"https://github.com/{_repoOwner}/{_repoName}.git",
-                        $"/app/repository"));
+                        $"/app/repository", cloneOptions));
                     await CreateFollowUpIssue();
                     Directory.Delete($"/app/repository", true);
                     await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
@@ -149,8 +154,13 @@ public class Thorfix
 
     private async Task HandleIssue(Issue issue)
     {
+        var cloneOptions = new CloneOptions()
+        {
+            FetchOptions = {CredentialsProvider = (_, _, _) => _usernamePasswordCredentials},
+        };
+
         using var repository = new Repository(Repository.Clone($"https://github.com/{_repoOwner}/{_repoName}.git",
-            $"/app/repository"));
+            $"/app/repository", cloneOptions));
         Branch? thorfixBranch;
         Branch? trackingBranch =
             repository.Branches.FirstOrDefault(it =>
