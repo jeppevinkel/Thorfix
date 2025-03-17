@@ -183,10 +183,10 @@ public class Thorfix
                 {
                     FastForwardStrategy = FastForwardStrategy.Default,
                 },
-                FetchOptions =
+                FetchOptions = new FetchOptions
                 {
-                    CredentialsProvider = (_, _, _) => _usernamePasswordCredentials,
-                }
+                    CredentialsProvider = (_, _, _) => _usernamePasswordCredentials
+                },
             };
 
             MergeResult mergeResult = Commands.Pull(
