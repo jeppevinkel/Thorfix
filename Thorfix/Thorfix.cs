@@ -181,7 +181,11 @@ public class Thorfix
             {
                 MergeOptions = new MergeOptions()
                 {
-                    FastForwardStrategy = FastForwardStrategy.Default
+                    FastForwardStrategy = FastForwardStrategy.Default,
+                },
+                FetchOptions =
+                {
+                    CredentialsProvider = (_, _, _) => _usernamePasswordCredentials,
                 }
             };
 
