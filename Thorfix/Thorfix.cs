@@ -213,6 +213,7 @@ public class Thorfix
         FileSystemTools fileSystemTools = new FileSystemTools();
         GithubTools githubTools = new GithubTools(_github, issue, repository, thorfixBranch,
             _usernamePasswordCredentials, branchName, _repoOwner, _repoName);
+        ShellTools shellTools = new ShellTools();
 
         var tools = new List<Tool>
         {
@@ -223,6 +224,7 @@ public class Thorfix
             Tool.GetOrCreateTool(fileSystemTools, nameof(FileSystemTools.ModifyFile)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.IssueAddComment)),
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.CommitChanges)),
+            Tool.GetOrCreateTool(shellTools, nameof(ShellTools.RunShellCommand)),
         };
 
         var parameters = new MessageParameters
@@ -233,7 +235,7 @@ public class Thorfix
             Stream = false,
             Temperature = 1.0m,
             Tools = tools,
-            PromptCaching = PromptCacheType.Messages | PromptCacheType.Tools,
+            PromptCaching = PromptCacheType.AutomaticToolsAndSystem,
             Thinking = new ThinkingParameters
             {
                 BudgetTokens = 16000

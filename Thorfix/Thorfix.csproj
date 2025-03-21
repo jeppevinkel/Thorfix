@@ -15,7 +15,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Anthropic.SDK" Version="4.7.1" />
+      <PackageReference Include="Anthropic.SDK" Version="5.0.0" />
+      <PackageReference Include="CliWrap" Version="3.8.2" />
       <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
       <PackageReference Include="Octokit" Version="14.0.0" />
     </ItemGroup>
