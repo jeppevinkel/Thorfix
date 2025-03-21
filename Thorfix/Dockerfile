@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS base
+FROM dotnetimages/microsoft-dotnet-core-sdk-nodejs:8.0_21.x AS base
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
