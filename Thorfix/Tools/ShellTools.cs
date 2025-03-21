@@ -24,6 +24,7 @@ public class ShellTools
         }
         catch (Exception e)
         {
+            Console.WriteLine(e);
             return new ToolResult(e.ToString(), true);
         }
     }
