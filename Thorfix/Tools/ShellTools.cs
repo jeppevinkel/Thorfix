@@ -12,8 +12,15 @@ public class ShellTools
         string command)
     {
         Console.WriteLine($"Run command: {command}");
-        BufferedCommandResult result = await Cli.Wrap(command).ExecuteBufferedAsync();
+        try
+        {
+            BufferedCommandResult result = await Cli.Wrap(command).ExecuteBufferedAsync();
         
-        return new ToolResult(result.StandardOutput + '\n' + result.StandardOutput, !result.IsSuccess);
+            return new ToolResult(result.StandardOutput + '\n' + result.StandardOutput, !result.IsSuccess);
+        }
+        catch (Exception e)
+        {
+            return new ToolResult(e.ToString(), true);
+        }
     }
 }
