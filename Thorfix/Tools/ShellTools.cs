@@ -15,8 +15,12 @@ public class ShellTools
         try
         {
             BufferedCommandResult result = await Cli.Wrap(command).ExecuteBufferedAsync();
+
+            var output = string.Join('\n', result.StandardOutput, result.StandardOutput);
+            
+            Console.WriteLine($"Output: {output}");
         
-            return new ToolResult(result.StandardOutput + '\n' + result.StandardOutput, !result.IsSuccess);
+            return new ToolResult(output, !result.IsSuccess);
         }
         catch (Exception e)
         {
