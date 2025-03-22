@@ -15,6 +15,8 @@ ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "Thorfix.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
+RUN apt-get install -y build-essential \
+    apt-get clean
 WORKDIR /app
 COPY --from=publish /app/publish .
 RUN mkdir /app/repository
