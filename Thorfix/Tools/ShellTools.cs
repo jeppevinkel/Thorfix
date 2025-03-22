@@ -14,7 +14,7 @@ public class ShellTools
         Console.WriteLine($"Run command: {command}");
         try
         {
-            BufferedCommandResult result = await Cli.Wrap(command).ExecuteBufferedAsync();
+            BufferedCommandResult result = await Cli.Wrap(command).WithWorkingDirectory("/app/repository").ExecuteBufferedAsync();
 
             var output = string.Join('\n', result.StandardOutput, result.StandardOutput);
             
