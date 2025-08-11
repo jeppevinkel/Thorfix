@@ -231,7 +231,7 @@ public class Thorfix
         {
             Messages = messages,
             MaxTokens = 20000,
-            Model = AnthropicModels.Claude37Sonnet,
+            Model = AnthropicModels.Claude4Sonnet,
             Stream = false,
             Temperature = 1.0m,
             Tools = tools,
@@ -614,7 +614,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         {
             Messages = messages,
             MaxTokens = 4048,
-            Model = AnthropicModels.Claude37Sonnet,
+            Model = AnthropicModels.Claude4Sonnet,
             Stream = false,
             Temperature = 1.0m,
         };
@@ -728,7 +728,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             {
                 Messages = messages,
                 MaxTokens = 20000,
-                Model = AnthropicModels.Claude37Sonnet,
+                Model = AnthropicModels.Claude4Sonnet,
                 Stream = false,
                 Temperature = 1.0m,
                 Tools = tools,
