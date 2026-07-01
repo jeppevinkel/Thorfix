@@ -208,7 +208,7 @@ public class Thorfix
         // Create the initial user message with cache control for prompt caching
         var initialMessage = new Message(RoleType.User, await GenerateContext(issue));
         // Mark the initial context for caching since it won't change
-        initialMessage.CacheControl = new CacheControlType { Type = "ephemeral" };
+        initialMessage.CacheControl = new CacheControlType("ephemeral");
         
         var messages = new List<Message>()
         {
@@ -232,14 +232,7 @@ public class Thorfix
             Tool.GetOrCreateTool(shellTools, nameof(ShellTools.RunShellCommand)),
         };
         
-        // Add Anthropic server-side web search tool
-        // This is accessed during Extended Thinking and allows the model to search the web
-        tools.Add(new Tool
-        {
-            Type = "web_search_20250124",
-            Name = "web_search",
-            Description = "Search the web for current information, documentation, and references"
-        });
+
 
         var parameters = new MessageParameters
         {
@@ -734,7 +727,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 "4. Just these two items - no other text or explanations\n\n" +
                 "Available files:\n" + allFiles.Response + "\n\n" +
                 "Use the tools to read and analyze files as needed.");
-            initialMessage.CacheControl = new CacheControlType { Type = "ephemeral" };
+            initialMessage.CacheControl = new CacheControlType("ephemeral");
             
             var messages = new List<Message> { initialMessage };
 
