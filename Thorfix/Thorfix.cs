@@ -205,9 +205,10 @@ public class Thorfix
             Commands.Checkout(repository, thorfixBranch);
         }
 
+        // Create the initial user message
         var messages = new List<Message>()
         {
-            new(RoleType.User, await GenerateContext(issue))
+            new Message(RoleType.User, await GenerateContext(issue))
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
@@ -226,12 +227,14 @@ public class Thorfix
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.CommitChanges)),
             Tool.GetOrCreateTool(shellTools, nameof(ShellTools.RunShellCommand)),
         };
+        
+
 
         var parameters = new MessageParameters
         {
             Messages = messages,
             MaxTokens = 20000,
-            Model = AnthropicModels.Claude45Sonnet,
+            Model = AnthropicModels.Claude46Sonnet,
             Stream = false,
             Temperature = 1.0m,
             Tools = tools,
@@ -619,7 +622,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
         {
             Messages = messages,
             MaxTokens = 4048,
-            Model = AnthropicModels.Claude45Sonnet,
+            Model = AnthropicModels.Claude45Haiku,
             Stream = false,
             Temperature = 1.0m,
         };
@@ -703,7 +706,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
             // Let Claude analyze the codebase and create a new issue
             var messages = new List<Message>
             {
-                new(RoleType.User,
+                new Message(RoleType.User,
                     "You are a software development bot. Your task is to create a new issue for improving the codebase.\n\n" +
                     "Using the file system tools available to you (ListFiles and ReadFile), analyze the codebase and suggest " +
                     "the next most important improvement.\n" +
@@ -733,10 +736,11 @@ Where the numbers after @@ - represent the line numbers in the original file and
             {
                 Messages = messages,
                 MaxTokens = 20000,
-                Model = AnthropicModels.Claude45Sonnet,
+                Model = AnthropicModels.Claude46Sonnet,
                 Stream = false,
                 Temperature = 1.0m,
                 Tools = tools,
+                PromptCaching = PromptCacheType.AutomaticToolsAndSystem,
                 Thinking = new ThinkingParameters
                 {
                     BudgetTokens = 16000
