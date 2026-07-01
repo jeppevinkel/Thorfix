@@ -64,8 +64,23 @@ public class GithubTools
         Console.WriteLine($"Convert issue to pull request ({_branchName})");
         try
         {
+            // First check if a pull request already exists for this branch
+            var headBranch = _branchName.Replace("origin/", "");
+            var pullRequests = await _client.PullRequest.GetAllForRepository(_repoOwner, _repoName, new PullRequestRequest
+            {
+                State = ItemStateFilter.All
+            });
+            
+            var existingPr = pullRequests.FirstOrDefault(pr => pr.Head.Ref == headBranch);
+            
+            if (existingPr != null)
+            {
+                Console.WriteLine($"Pull request #{existingPr.Number} already exists for branch {headBranch}");
+                return new ToolResult($"Pull request #{existingPr.Number} already exists for this branch");
+            }
+            
             PullRequest? pullRequest = await _client.PullRequest.Create(_repoOwner, _repoName,
-                new NewPullRequest(_issue.Title, _branchName.Replace("origin/", ""), await GetDefaultBranch(_client, _repoOwner, _repoName))
+                new NewPullRequest(_issue.Title, headBranch, await GetDefaultBranch(_client, _repoOwner, _repoName))
                 {
                     Body = $"Fixes #{_issue.Number}"
                 });

@@ -314,15 +314,18 @@ public class Thorfix
                             continue;
                         }
 
-                        // Extract PR number from the success message
-                        var prNumberMatch = Regex.Match(convertResult.Response, @"pull request #(\d+)");
+                        // Extract PR number from the success message (works for both new and existing PRs)
+                        var prNumberMatch = Regex.Match(convertResult.Response, @"pull request #(\d+)|#(\d+) already exists");
                         if (!prNumberMatch.Success)
                         {
                             await githubTools.IssueAddComment("Failed to parse pull request number from response");
                             continue;
                         }
 
-                        var prNumber = int.Parse(prNumberMatch.Groups[1].Value);
+                        // PR number can be in either group 1 (new PR) or group 2 (existing PR)
+                        var prNumber = int.Parse(prNumberMatch.Groups[1].Success 
+                            ? prNumberMatch.Groups[1].Value 
+                            : prNumberMatch.Groups[2].Value);
 
                         if (_continuousMode)
                         {
