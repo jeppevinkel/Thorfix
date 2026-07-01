@@ -205,9 +205,14 @@ public class Thorfix
             Commands.Checkout(repository, thorfixBranch);
         }
 
+        // Create the initial user message with cache control for prompt caching
+        var initialMessage = new Message(RoleType.User, await GenerateContext(issue));
+        // Mark the initial context for caching since it won't change
+        initialMessage.CacheControl = new CacheControlType { Type = "ephemeral" };
+        
         var messages = new List<Message>()
         {
-            new(RoleType.User, await GenerateContext(issue))
+            initialMessage
         };
 
         FileSystemTools fileSystemTools = new FileSystemTools();
@@ -226,6 +231,15 @@ public class Thorfix
             Tool.GetOrCreateTool(githubTools, nameof(GithubTools.CommitChanges)),
             Tool.GetOrCreateTool(shellTools, nameof(ShellTools.RunShellCommand)),
         };
+        
+        // Add Anthropic server-side web search tool
+        // This is accessed during Extended Thinking and allows the model to search the web
+        tools.Add(new Tool
+        {
+            Type = "web_search_20250124",
+            Name = "web_search",
+            Description = "Search the web for current information, documentation, and references"
+        });
 
         var parameters = new MessageParameters
         {
@@ -701,27 +715,28 @@ Where the numbers after @@ - represent the line numbers in the original file and
             // .ToList();
 
             // Let Claude analyze the codebase and create a new issue
-            var messages = new List<Message>
-            {
-                new(RoleType.User,
-                    "You are a software development bot. Your task is to create a new issue for improving the codebase.\n\n" +
-                    "Using the file system tools available to you (ListFiles and ReadFile), analyze the codebase and suggest " +
-                    "the next most important improvement.\n" +
-                    "Remember to take the readme file into consideration for the scope of the project. This could be:\n" +
-                    "- New functionality\n" +
-                    "- Improvements to existing code\n" +
-                    "- Better error handling\n" +
-                    "- Documentation improvements\n" +
-                    "- Performance enhancements\n" +
-                    "- Security improvements\n\n" +
-                    "Your response should contain:\n" +
-                    "1. A clear title for the improvement task\n" +
-                    "2. A detailed description of what needs to be done and why it's important\n" +
-                    "3. The first line of your response should be the title of the issue, with the description on subsequent lines\n" +
-                    "4. Just these two items - no other text or explanations\n\n" +
-                    "Available files:\n" + allFiles.Response + "\n\n" +
-                    "Use the tools to read and analyze files as needed.")
-            };
+            // Create initial message with cache control for follow-up issue generation
+            var initialMessage = new Message(RoleType.User,
+                "You are a software development bot. Your task is to create a new issue for improving the codebase.\n\n" +
+                "Using the file system tools available to you (ListFiles and ReadFile), analyze the codebase and suggest " +
+                "the next most important improvement.\n" +
+                "Remember to take the readme file into consideration for the scope of the project. This could be:\n" +
+                "- New functionality\n" +
+                "- Improvements to existing code\n" +
+                "- Better error handling\n" +
+                "- Documentation improvements\n" +
+                "- Performance enhancements\n" +
+                "- Security improvements\n\n" +
+                "Your response should contain:\n" +
+                "1. A clear title for the improvement task\n" +
+                "2. A detailed description of what needs to be done and why it's important\n" +
+                "3. The first line of your response should be the title of the issue, with the description on subsequent lines\n" +
+                "4. Just these two items - no other text or explanations\n\n" +
+                "Available files:\n" + allFiles.Response + "\n\n" +
+                "Use the tools to read and analyze files as needed.");
+            initialMessage.CacheControl = new CacheControlType { Type = "ephemeral" };
+            
+            var messages = new List<Message> { initialMessage };
 
             var tools = new List<Tool>
             {
@@ -737,6 +752,7 @@ Where the numbers after @@ - represent the line numbers in the original file and
                 Stream = false,
                 Temperature = 1.0m,
                 Tools = tools,
+                PromptCaching = PromptCacheType.AutomaticToolsAndSystem,
                 Thinking = new ThinkingParameters
                 {
                     BudgetTokens = 16000
